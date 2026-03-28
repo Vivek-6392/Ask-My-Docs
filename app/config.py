@@ -99,21 +99,22 @@ except ImportError:
 load_dotenv()
 
 
-def get_env(key: str, default: str = "") -> str:
-    """
-    Priority:
-    1. Streamlit secrets (cloud)
-    2. .env file (local)
-    3. default value
-    """
+def get_env(key: str, default: str = ""):
+    # ✅ 1. ALWAYS check environment variables first (CI + local + Docker)
+    value = os.getenv(key)
+    if value:
+        return value
+
+    # ✅ 2. Then check Streamlit secrets (only for Streamlit Cloud)
     if STREAMLIT_AVAILABLE:
         try:
+            import streamlit as st
             if key in st.secrets:
                 return st.secrets[key]
         except Exception:
             pass
 
-    return os.getenv(key, default)
+    return default
 
 
 @dataclass
