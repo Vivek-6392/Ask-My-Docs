@@ -387,4 +387,4 @@ Query: "What is the refund policy for digital products?"
 
 ## License
 
-MIT © 2024 Your Organization
+MIT © 2026
