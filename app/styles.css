@@ -1,0 +1,115 @@
+/* Ask My Docs — Custom Streamlit Styles */
+
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
+
+:root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --border: #2a2d3a;
+    --accent: #4f8ef7;
+    --accent2: #a78bfa;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --success: #10b981;
+    --warning: #f59e0b;
+}
+
+html, body, [data-testid="stAppViewContainer"] {
+    font-family: 'IBM Plex Sans', sans-serif !important;
+    background: var(--bg) !important;
+    color: var(--text) !important;
+}
+
+/* Sidebar */
+[data-testid="stSidebar"] {
+    background: var(--surface) !important;
+    border-right: 1px solid var(--border) !important;
+}
+
+/* Chat messages */
+[data-testid="stChatMessage"] {
+    border-radius: 8px !important;
+    margin-bottom: 8px !important;
+    border: 1px solid var(--border) !important;
+}
+
+/* Input */
+[data-testid="stChatInputTextArea"] {
+    font-family: 'IBM Plex Sans', sans-serif !important;
+    background: var(--surface) !important;
+    border: 1px solid var(--accent) !important;
+    color: var(--text) !important;
+}
+
+/* Buttons */
+.stButton > button {
+    background: linear-gradient(135deg, var(--accent), var(--accent2)) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 6px !important;
+    font-family: 'IBM Plex Mono', monospace !important;
+    font-size: 0.85rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.02em !important;
+    transition: opacity 0.2s !important;
+}
+
+.stButton > button:hover {
+    opacity: 0.85 !important;
+}
+
+/* Expanders (citations) */
+[data-testid="stExpander"] {
+    border: 1px solid var(--border) !important;
+    border-radius: 6px !important;
+    background: var(--surface) !important;
+}
+
+/* Metrics */
+[data-testid="stMetric"] {
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 8px !important;
+    padding: 12px !important;
+}
+
+/* Code blocks */
+code, pre {
+    font-family: 'IBM Plex Mono', monospace !important;
+    font-size: 0.82rem !important;
+}
+
+/* Tabs */
+[data-testid="stTabs"] button {
+    font-family: 'IBM Plex Mono', monospace !important;
+    font-size: 0.85rem !important;
+}
+
+/* File uploader */
+[data-testid="stFileUploader"] {
+    border: 2px dashed var(--border) !important;
+    border-radius: 8px !important;
+    background: var(--surface) !important;
+}
+
+/* Divider */
+hr {
+    border-color: var(--border) !important;
+}
+
+/* Sliders */
+[data-testid="stSlider"] [role="slider"] {
+    background: var(--accent) !important;
+}
+
+/* Info boxes */
+[data-testid="stAlert"] {
+    border-radius: 6px !important;
+    border-left: 4px solid var(--accent) !important;
+}
+
+/* Toggle */
+[data-testid="stCheckbox"] span {
+    font-family: 'IBM Plex Mono', monospace !important;
+    font-size: 0.85rem !important;
+}

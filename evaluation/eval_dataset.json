@@ -1,0 +1,22 @@
+[
+  {
+    "question": "What is the refund policy for digital products?",
+    "ground_truth": "Digital products are non-refundable once downloaded, except in cases of technical failure verified by support."
+  },
+  {
+    "question": "How do I reset my password?",
+    "ground_truth": "Click 'Forgot Password' on the login page, enter your email, and follow the link sent within 5 minutes."
+  },
+  {
+    "question": "What are the system requirements for the enterprise tier?",
+    "ground_truth": "Enterprise tier requires 16GB RAM, 4-core CPU, and Ubuntu 20.04 or later, or Windows Server 2019+."
+  },
+  {
+    "question": "Can I export data in CSV format?",
+    "ground_truth": "Yes, all reports and datasets can be exported as CSV from the dashboard under Settings > Export."
+  },
+  {
+    "question": "What SLA uptime does the platform guarantee?",
+    "ground_truth": "The platform guarantees 99.9% uptime per month, with credits issued if SLA is breached."
+  }
+]
