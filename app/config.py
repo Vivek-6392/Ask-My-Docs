@@ -130,9 +130,9 @@ class AppConfig:
     embedding_dim: int = 384
 
     # ================= Retrieval =================
-    vector_top_k: int = 40
-    bm25_top_k: int = 25
-    rerank_top_k: int = 10
+    vector_top_k: int = 15
+    bm25_top_k: int = 10
+    rerank_top_k: int = 5
     reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
     # ================= Storage =================
