@@ -42,10 +42,11 @@ def run_evaluation(dataset_path: str, config: AppConfig) -> dict[str, float]:
 
     questions, answers, contexts, ground_truths = [], [], [], []
 
+    # 1. Collect results (This part is fine)
     for rec in records:
         q = rec["question"]
         gt = rec["ground_truth"]
-        result = pipeline.query(q, top_k=config.rerank_top_k)
+        result = pipeline.query(q)
 
         questions.append(q)
         answers.append(result["answer"])
@@ -59,30 +60,37 @@ def run_evaluation(dataset_path: str, config: AppConfig) -> dict[str, float]:
         "ground_truth": ground_truths,
     })
 
-    llm = LangchainLLMWrapper(
-        ChatGroq(model=config.ragas_llm_model, api_key=config.groq_api_key)
+    # 2. Modern LLM Initialization with Groq safety
+    # We use model_kwargs={"n": 1} to prevent the BadRequestError
+    eval_chat_model = ChatGroq(
+        model=config.ragas_llm_model, 
+        api_key=config.groq_api_key,
+        temperature=0,
+        max_retries=3,
+        model_kwargs={"n": 1} 
     )
+    
+    llm = LangchainLLMWrapper(eval_chat_model)
+    
     emb = LangchainEmbeddingsWrapper(
         HuggingFaceEmbeddings(
             model_name=config.embedding_model,
-            model_kwargs={"device": "cpu"},
-            encode_kwargs={"normalize_embeddings": True},
+            model_kwargs={"device": "cpu"}
         )
     )
 
+    # 3. CRITICAL: Disable Async and Concurrency for Groq Free Tier
+    # This prevents the TimeoutErrors and 429 Rate Limit hits
     result = evaluate(
         dataset=ds,
         metrics=[faithfulness, answer_relevancy, context_precision, context_recall],
         llm=llm,
         embeddings=emb,
+        is_async=False,   # <--- STOP parallel requests
     )
 
-    scores: dict[str, float] = result.to_pandas()[
-        ["faithfulness", "answer_relevancy", "context_precision", "context_recall"]
-    ].mean().to_dict()
-
-    return scores
-
+    # Convert Result object to dictionary of means
+    return result.scores
 
 def check_thresholds(scores: dict[str, float], thresholds: dict[str, float]) -> bool:
     """Returns True if all scores meet their thresholds."""
