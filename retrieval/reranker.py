@@ -20,7 +20,7 @@ class CrossEncoderReranker:
         self,
         query: str,
         candidates: list[dict],
-        top_k: int = 5,
+        top_k: int = 10,  # matches config default; pipeline always passes explicitly
     ) -> list[dict]:
         """
         Re-score `candidates` (each with key `text`) against `query`.
@@ -37,4 +37,18 @@ class CrossEncoderReranker:
             for c, s in zip(candidates, scores)
         ]
         scored.sort(key=lambda x: x["score"], reverse=True)
+
+        # Log top and bottom scores to help diagnose recall drops
+        logger.debug(
+            "Reranker scores (top %d of %d): %s",
+            top_k,
+            len(scored),
+            [(c.get("id", i), round(c["score"], 3)) for i, c in enumerate(scored[:top_k])],
+        )
+        if len(scored) > top_k:
+            logger.debug(
+                "Reranker dropped chunks with scores: %s",
+                [round(c["score"], 3) for c in scored[top_k:]],
+            )
+
         return scored[:top_k]
