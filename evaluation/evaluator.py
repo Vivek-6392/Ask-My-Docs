@@ -10,11 +10,11 @@ import math
 import sys
 from pathlib import Path
 from datasets import Dataset
-from openai import OpenAI
-from ragas import evaluate
+from langchain_groq import ChatGroq
 from langchain_huggingface import HuggingFaceEmbeddings
+from ragas import evaluate
 from ragas.embeddings import LangchainEmbeddingsWrapper
-from ragas.llms import llm_factory
+from ragas.llms import LangchainLLMWrapper
 from ragas.metrics import (
     Faithfulness,
     AnswerRelevancy,
@@ -65,14 +65,11 @@ def build_ragas_dataset(records: list[dict], pipeline: RAGPipeline) -> Dataset:
 
 
 def build_llm_and_embeddings(config: AppConfig):
-    openai_client = OpenAI(
+    chat_model = ChatGroq(
         api_key=config.groq_api_key,
-        base_url="https://api.groq.com/openai/v1",
-    )
-    llm = llm_factory(
         model=config.ragas_llm_model,
-        client=openai_client,
     )
+    llm = LangchainLLMWrapper(chat_model)
     hf_embeddings = HuggingFaceEmbeddings(model_name=config.embedding_model)
     embeddings = LangchainEmbeddingsWrapper(hf_embeddings)
     return llm, embeddings
