@@ -63,12 +63,9 @@ def run_evaluation(dataset_path: str, config: AppConfig) -> dict[str, float]:
         "ground_truth": ground_truths,
     })
 
-    # Use native RAGAS factory — no deprecated LangchainLLMWrapper
-    llm = llm_factory(
-        config.ragas_llm_model,
-        provider="groq",
-        api_key=config.groq_api_key,
-    )
+    # llm_factory now requires an explicit client instance (text-only mode removed)
+    groq_client = Groq(api_key=config.groq_api_key)
+    llm = llm_factory(config.ragas_llm_model, client=groq_client)
 
     # Native RAGAS HuggingFace embeddings — no deprecated LangchainEmbeddingsWrapper
     emb = RagasHFEmbeddings(model=config.embedding_model)
