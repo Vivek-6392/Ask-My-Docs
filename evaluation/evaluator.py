@@ -1,6 +1,7 @@
 """
 Evaluation pipeline using RAGAS metrics.
-Run standalone: python -m evaluation.evaluator --dataset eval_dataset.json
+Run standalone:
+    python -m evaluation.evaluator --dataset evaluation/eval_dataset.json
 """
 
 from __future__ import annotations
@@ -12,12 +13,11 @@ import sys
 from pathlib import Path
 
 from datasets import Dataset
-from groq import Groq
-from openai import OpenAI  # ✅ RAGAS expects OpenAI client format
+from openai import OpenAI
 from ragas import evaluate
 from ragas.embeddings import HuggingFaceEmbeddings as RagasHFEmbeddings
 from ragas.llms import llm_factory
-from ragas.metrics.collections import (  # ✅ Use collections per deprecation warning
+from ragas.metrics.collections import (
     Faithfulness,
     AnswerRelevancy,
     ContextPrecision,
@@ -31,25 +31,24 @@ from app.config import AppConfig
 from retrieval.pipeline import RAGPipeline
 
 
+THRESHOLDS = {
+    "faithfulness": 0.80,
+    "answer_relevancy": 0.75,
+    "context_precision": 0.70,
+    "context_recall": 0.70,
+}
+
+
 def load_eval_dataset(path: str) -> list[dict]:
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
-def run_evaluation(dataset_path: str, config: AppConfig) -> dict[str, float]:
-    records = load_eval_dataset(dataset_path)
-    pipeline = RAGPipeline(config)
-
+def build_ragas_dataset(records: list[dict], pipeline: RAGPipeline) -> Dataset:
     questions: list[str] = []
     answers: list[str] = []
     contexts: list[list[str]] = []
     ground_truths: list[str] = []
-
-    run_config = RunConfig(
-        max_workers=1,
-        timeout=60,
-        max_retries=3,
-    )
 
     for rec in records:
         q = rec["question"]
@@ -61,28 +60,47 @@ def run_evaluation(dataset_path: str, config: AppConfig) -> dict[str, float]:
         contexts.append([c["text"] for c in result["chunks"]])
         ground_truths.append(gt)
 
-    ds = Dataset.from_dict({
-        "question": questions,
-        "answer": answers,
-        "contexts": contexts,
-        "ground_truth": ground_truths,
-    })
-
-    # ✅ CRITICAL: Use OpenAI client wrapper for Groq (per RAGAS deprecation message)
-    # RAGAS collections metrics require modern InstructorLLM via llm_factory + OpenAI client
-    openai_client = OpenAI(
-        api_key=config.groq_api_key,        # Use Groq key
-        base_url="https://api.groq.com/openai/v1",  # Groq OpenAI-compatible endpoint
+    return Dataset.from_dict(
+        {
+            "question": questions,
+            "answer": answers,
+            "contexts": contexts,
+            "ground_truth": ground_truths,
+        }
     )
-    
-    # ✅ Exact pattern from deprecation warning + your original comment
-    llm = llm_factory(config.ragas_llm_model, client=openai_client)
 
-    emb = RagasHFEmbeddings(model=config.embedding_model)
+
+def build_llm_and_embeddings(config: AppConfig):
+    openai_client = OpenAI(
+        api_key=config.groq_api_key,
+        base_url="https://api.groq.com/openai/v1",
+    )
+
+    llm = llm_factory(
+        model=config.ragas_llm_model,
+        client=openai_client,
+    )
+
+    embeddings = RagasHFEmbeddings(model=config.embedding_model)
+    return llm, embeddings
+
+
+def run_evaluation(dataset_path: str, config: AppConfig) -> dict[str, float]:
+    records = load_eval_dataset(dataset_path)
+    pipeline = RAGPipeline(config)
+    ds = build_ragas_dataset(records, pipeline)
+
+    llm, embeddings = build_llm_and_embeddings(config)
+
+    run_config = RunConfig(
+        max_workers=1,
+        timeout=60,
+        max_retries=3,
+    )
 
     metrics = [
         Faithfulness(llm=llm),
-        AnswerRelevancy(llm=llm, embeddings=emb, strictness=1),
+        AnswerRelevancy(llm=llm, embeddings=embeddings, strictness=1),
         ContextPrecision(llm=llm),
         ContextRecall(llm=llm),
     ]
@@ -91,26 +109,38 @@ def run_evaluation(dataset_path: str, config: AppConfig) -> dict[str, float]:
         dataset=ds,
         metrics=metrics,
         llm=llm,
-        embeddings=emb,
+        embeddings=embeddings,
         run_config=run_config,
     )
 
-    if not result.scores:
+    if not getattr(result, "scores", None):
         raise ValueError("RAGAS returned empty scores")
 
     scores: dict[str, float] = {}
-    for metric in result.scores[0].keys():
-        valid = [row[metric] for row in result.scores 
-                if row.get(metric) is not None and not math.isnan(row[metric])]
-        scores[metric] = sum(valid) / len(valid) if valid else float("nan")
+    metric_names = result.scores[0].keys()
+
+    for metric in metric_names:
+        valid_values: list[float] = []
+        for row in result.scores:
+            value = row.get(metric)
+            if value is None:
+                continue
+            if isinstance(value, float) and math.isnan(value):
+                continue
+            valid_values.append(float(value))
+
+        scores[metric] = (
+            sum(valid_values) / len(valid_values) if valid_values else float("nan")
+        )
 
     return scores
 
 
 def check_thresholds(scores: dict[str, float], thresholds: dict[str, float]) -> bool:
     passed = True
+
     for metric, threshold in thresholds.items():
-        val = scores.get(metric, 0.0)
+        val = scores.get(metric, float("nan"))
         if math.isnan(val):
             print(f"  ⚠️  {metric}: NaN — all evaluation requests failed for this metric")
             passed = False
@@ -119,15 +149,8 @@ def check_thresholds(scores: dict[str, float], thresholds: dict[str, float]) -> 
             print(f"  {status} {metric}: {val:.4f} (threshold {threshold})")
             if val < threshold:
                 passed = False
+
     return passed
-
-
-THRESHOLDS = {
-    "faithfulness": 0.80,
-    "answer_relevancy": 0.75,
-    "context_precision": 0.70,
-    "context_recall": 0.70,
-}
 
 
 def main() -> None:
@@ -151,13 +174,14 @@ def main() -> None:
     Path(args.output).parent.mkdir(parents=True, exist_ok=True)
     with open(args.output, "w", encoding="utf-8") as f:
         json.dump({"scores": scores, "passed": passed}, f, indent=2)
+
     print(f"\n💾 Results saved to {args.output}")
 
     if not passed:
         print("\n❌ Evaluation FAILED — thresholds not met.")
         sys.exit(1)
-    else:
-        print("\n✅ Evaluation PASSED.")
+
+    print("\n✅ Evaluation PASSED.")
 
 
 if __name__ == "__main__":
