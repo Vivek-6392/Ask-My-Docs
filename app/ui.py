@@ -27,9 +27,9 @@ def render_sidebar(pipeline: RAGPipeline, config: AppConfig):
 
     # Retrieval settings
     st.markdown("**Retrieval Settings**")
-    config.rerank_top_k = st.slider("Final context chunks", 1, 10, config.rerank_top_k)
-    config.vector_top_k = st.slider("Vector candidates", 5, 50, config.vector_top_k)
-    config.bm25_top_k = st.slider("BM25 candidates", 5, 50, config.bm25_top_k)
+    config.rerank_top_k = st.slider("Final context chunks", 1, 5, config.rerank_top_k)
+    config.vector_top_k = st.slider("Vector candidates", 5, 30, config.vector_top_k)
+    config.bm25_top_k = st.slider("BM25 candidates", 5, 30, config.bm25_top_k)
 
     st.divider()
 

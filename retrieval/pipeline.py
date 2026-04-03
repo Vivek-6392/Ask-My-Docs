@@ -30,6 +30,8 @@ class RAGPipeline:
             temperature=config.llm_temperature,
             max_tokens=config.llm_max_tokens,
             api_key=config.groq_api_key,
+            max_retries=3,          # <--- CRITICAL: Tells LangChain to wait and retry on 429 errors
+            request_timeout=60.0,    # Prevents the app from hanging indefinitely
         )
 
     def query(
