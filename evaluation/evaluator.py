@@ -13,10 +13,11 @@ from pathlib import Path
 
 from datasets import Dataset
 from groq import Groq
+from langchain_groq import ChatGroq
 from ragas import evaluate
 from ragas.embeddings import HuggingFaceEmbeddings as RagasHFEmbeddings
-from ragas.llms import llm_factory
-from ragas.metrics import (
+from ragas.llms import LangchainLLMWrapper
+from ragas.metrics.collections import (
     Faithfulness,
     AnswerRelevancy,
     ContextPrecision,
@@ -70,10 +71,17 @@ def run_evaluation(dataset_path: str, config: AppConfig) -> dict[str, float]:
         }
     )
 
-    groq_client = Groq(api_key=config.groq_api_key)
-    llm = llm_factory(config.ragas_llm_model, client=groq_client)
+    # ✅ Use Langchain ChatGroq wrapper - RAGAS expects OpenAI-compatible chat interface
+    groq_client = ChatGroq(
+        api_key=config.groq_api_key,
+        model_name=config.ragas_llm_model,  # e.g., "llama3-8b-8192" or "llama-3.1-70b-versatile"
+        temperature=0,
+    )
+    llm = LangchainLLMWrapper(groq_client)
+
     emb = RagasHFEmbeddings(model=config.embedding_model)
 
+    # ✅ Use collections import (removes deprecation warning)
     metrics = [
         Faithfulness(llm=llm),
         AnswerRelevancy(llm=llm, embeddings=emb, strictness=1),
