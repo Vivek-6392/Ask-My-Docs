@@ -3,19 +3,17 @@ Evaluation pipeline using RAGAS metrics.
 Run standalone:
     python -m evaluation.evaluator --dataset evaluation/eval_dataset.json
 """
-
 from __future__ import annotations
-
 import argparse
 import json
 import math
 import sys
 from pathlib import Path
-
 from datasets import Dataset
 from openai import OpenAI
 from ragas import evaluate
-from ragas.embeddings import HuggingFaceEmbeddings as RagasHFEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
+from ragas.embeddings import LangchainEmbeddingsWrapper
 from ragas.llms import llm_factory
 from ragas.metrics.collections import (
     Faithfulness,
@@ -24,12 +22,9 @@ from ragas.metrics.collections import (
     ContextRecall,
 )
 from ragas.run_config import RunConfig
-
 sys.path.insert(0, str(Path(__file__).parent.parent))
-
 from app.config import AppConfig
 from retrieval.pipeline import RAGPipeline
-
 
 THRESHOLDS = {
     "faithfulness": 0.80,
@@ -54,7 +49,6 @@ def build_ragas_dataset(records: list[dict], pipeline: RAGPipeline) -> Dataset:
         q = rec["question"]
         gt = rec["ground_truth"]
         result = pipeline.query(q)
-
         questions.append(q)
         answers.append(result["answer"])
         contexts.append([c["text"] for c in result["chunks"]])
@@ -75,13 +69,13 @@ def build_llm_and_embeddings(config: AppConfig):
         api_key=config.groq_api_key,
         base_url="https://api.groq.com/openai/v1",
     )
-
     llm = llm_factory(
         model=config.ragas_llm_model,
         client=openai_client,
     )
-
-    embeddings = RagasHFEmbeddings(model=config.embedding_model)
+    # Wrap LangChain HF embeddings for RAGAS 0.2.x compatibility
+    hf_embeddings = HuggingFaceEmbeddings(model_name=config.embedding_model)
+    embeddings = LangchainEmbeddingsWrapper(hf_embeddings)
     return llm, embeddings
 
 
@@ -89,7 +83,6 @@ def run_evaluation(dataset_path: str, config: AppConfig) -> dict[str, float]:
     records = load_eval_dataset(dataset_path)
     pipeline = RAGPipeline(config)
     ds = build_ragas_dataset(records, pipeline)
-
     llm, embeddings = build_llm_and_embeddings(config)
 
     run_config = RunConfig(
@@ -118,7 +111,6 @@ def run_evaluation(dataset_path: str, config: AppConfig) -> dict[str, float]:
 
     scores: dict[str, float] = {}
     metric_names = result.scores[0].keys()
-
     for metric in metric_names:
         valid_values: list[float] = []
         for row in result.scores:
@@ -128,7 +120,6 @@ def run_evaluation(dataset_path: str, config: AppConfig) -> dict[str, float]:
             if isinstance(value, float) and math.isnan(value):
                 continue
             valid_values.append(float(value))
-
         scores[metric] = (
             sum(valid_values) / len(valid_values) if valid_values else float("nan")
         )
@@ -138,7 +129,6 @@ def run_evaluation(dataset_path: str, config: AppConfig) -> dict[str, float]:
 
 def check_thresholds(scores: dict[str, float], thresholds: dict[str, float]) -> bool:
     passed = True
-
     for metric, threshold in thresholds.items():
         val = scores.get(metric, float("nan"))
         if math.isnan(val):
@@ -149,7 +139,6 @@ def check_thresholds(scores: dict[str, float], thresholds: dict[str, float]) -> 
             print(f"  {status} {metric}: {val:.4f} (threshold {threshold})")
             if val < threshold:
                 passed = False
-
     return passed
 
 
