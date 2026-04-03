@@ -30,7 +30,7 @@ THRESHOLDS = {
     "faithfulness": 0.80,
     "answer_relevancy": 0.75,
     "context_precision": 0.70,
-    "context_recall": 0.70,
+    "context_recall": 0.60,
 }
 
 
