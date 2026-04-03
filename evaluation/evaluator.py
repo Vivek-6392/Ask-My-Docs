@@ -1,35 +1,37 @@
 """
 Evaluation pipeline using RAGAS metrics.
-Run standalone:  python -m evaluation.evaluator --dataset eval_dataset.json
+Run standalone: python -m evaluation.evaluator --dataset eval_dataset.json
 """
 
 from __future__ import annotations
-import json
+
 import argparse
+import json
 import math
 import sys
 from pathlib import Path
-from ragas.run_config import RunConfig
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from datasets import Dataset
+from groq import Groq
 from ragas import evaluate
-from ragas.metrics.collections import (
+from ragas.embeddings import HuggingFaceEmbeddings as RagasHFEmbeddings
+from ragas.llms import llm_factory
+from ragas.metrics import (
     Faithfulness,
     AnswerRelevancy,
     ContextPrecision,
     ContextRecall,
 )
-from ragas.llms import llm_factory
-from ragas.embeddings import HuggingFaceEmbeddings as RagasHFEmbeddings
-from groq import Groq
+from ragas.run_config import RunConfig
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from app.config import AppConfig
 from retrieval.pipeline import RAGPipeline
 
+
 def load_eval_dataset(path: str) -> list[dict]:
-    with open(path) as f:
+    with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -37,10 +39,13 @@ def run_evaluation(dataset_path: str, config: AppConfig) -> dict[str, float]:
     records = load_eval_dataset(dataset_path)
     pipeline = RAGPipeline(config)
 
-    questions, answers, contexts, ground_truths = [], [], [], []
+    questions: list[str] = []
+    answers: list[str] = []
+    contexts: list[list[str]] = []
+    ground_truths: list[str] = []
 
     run_config = RunConfig(
-        max_workers=1,   # prevents Groq free-tier 429s
+        max_workers=1,
         timeout=60,
         max_retries=3,
     )
@@ -48,7 +53,7 @@ def run_evaluation(dataset_path: str, config: AppConfig) -> dict[str, float]:
     for rec in records:
         q = rec["question"]
         gt = rec["ground_truth"]
-        # pipeline reads vector_top_k / bm25_top_k / rerank_top_k from config
+
         result = pipeline.query(q)
 
         questions.append(q)
@@ -56,30 +61,29 @@ def run_evaluation(dataset_path: str, config: AppConfig) -> dict[str, float]:
         contexts.append([c["text"] for c in result["chunks"]])
         ground_truths.append(gt)
 
-    ds = Dataset.from_dict({
-        "question": questions,
-        "answer": answers,
-        "contexts": contexts,
-        "ground_truth": ground_truths,
-    })
+    ds = Dataset.from_dict(
+        {
+            "question": questions,
+            "answer": answers,
+            "contexts": contexts,
+            "ground_truth": ground_truths,
+        }
+    )
 
-    # llm_factory now requires an explicit client instance (text-only mode removed)
     groq_client = Groq(api_key=config.groq_api_key)
     llm = llm_factory(config.ragas_llm_model, client=groq_client)
-
-    # Native RAGAS HuggingFace embeddings — no deprecated LangchainEmbeddingsWrapper
     emb = RagasHFEmbeddings(model=config.embedding_model)
 
-    # All metrics must be instantiated objects; pass llm/emb to those that need them
-    faithfulness     = Faithfulness(llm=llm)
-    # strictness=1 → RAGAS sends n=1 per request; Groq rejects n>1 with 400
-    answer_relevancy = AnswerRelevancy(strictness=1, llm=llm, embeddings=emb)
-    context_precision = ContextPrecision(llm=llm)
-    context_recall    = ContextRecall(llm=llm)
+    metrics = [
+        Faithfulness(llm=llm),
+        AnswerRelevancy(llm=llm, embeddings=emb, strictness=1),
+        ContextPrecision(llm=llm),
+        ContextRecall(llm=llm),
+    ]
 
     result = evaluate(
         dataset=ds,
-        metrics=[faithfulness, answer_relevancy, context_precision, context_recall],
+        metrics=metrics,
         llm=llm,
         embeddings=emb,
         run_config=run_config,
@@ -88,14 +92,14 @@ def run_evaluation(dataset_path: str, config: AppConfig) -> dict[str, float]:
     if not result.scores:
         raise ValueError("RAGAS returned empty scores")
 
-    # Average per metric; skip NaN rows so one bad request doesn't zero the metric
     scores: dict[str, float] = {}
     for metric in result.scores[0].keys():
-        valid = [row[metric] for row in result.scores if not math.isnan(row[metric])]
-        if valid:
-            scores[metric] = sum(valid) / len(valid)
-        else:
-            scores[metric] = float("nan")
+        valid = [
+            row[metric]
+            for row in result.scores
+            if row.get(metric) is not None and not math.isnan(row[metric])
+        ]
+        scores[metric] = sum(valid) / len(valid) if valid else float("nan")
 
     return scores
 
@@ -123,7 +127,7 @@ THRESHOLDS = {
 }
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="RAG Evaluation Pipeline")
     parser.add_argument("--dataset", default="evaluation/eval_dataset.json")
     parser.add_argument("--output", default="evaluation/results.json")
@@ -142,15 +146,16 @@ def main():
     passed = check_thresholds(scores, THRESHOLDS)
 
     Path(args.output).parent.mkdir(parents=True, exist_ok=True)
-    with open(args.output, "w") as f:
+    with open(args.output, "w", encoding="utf-8") as f:
         json.dump({"scores": scores, "passed": passed}, f, indent=2)
+
     print(f"\n💾 Results saved to {args.output}")
 
     if not passed:
         print("\n❌ Evaluation FAILED — thresholds not met.")
         sys.exit(1)
-    else:
-        print("\n✅ Evaluation PASSED.")
+
+    print("\n✅ Evaluation PASSED.")
 
 
 if __name__ == "__main__":
