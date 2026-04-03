@@ -16,10 +16,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from datasets import Dataset
 from ragas import evaluate
 from ragas.metrics.collections import (
-    faithfulness,
+    Faithfulness,
     AnswerRelevancy,
-    context_precision,
-    context_recall,
+    ContextPrecision,
+    ContextRecall,
 )
 from ragas.llms import llm_factory
 from ragas.embeddings import HuggingFaceEmbeddings as RagasHFEmbeddings
@@ -70,8 +70,12 @@ def run_evaluation(dataset_path: str, config: AppConfig) -> dict[str, float]:
     # Native RAGAS HuggingFace embeddings — no deprecated LangchainEmbeddingsWrapper
     emb = RagasHFEmbeddings(model=config.embedding_model)
 
+    # All metrics must be instantiated objects; pass llm/emb to those that need them
+    faithfulness     = Faithfulness(llm=llm)
     # strictness=1 → RAGAS sends n=1 per request; Groq rejects n>1 with 400
     answer_relevancy = AnswerRelevancy(strictness=1, llm=llm, embeddings=emb)
+    context_precision = ContextPrecision(llm=llm)
+    context_recall    = ContextRecall(llm=llm)
 
     result = evaluate(
         dataset=ds,
