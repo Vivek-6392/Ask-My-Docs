@@ -67,7 +67,7 @@ def run_evaluation(dataset_path: str, config: AppConfig) -> dict[str, float]:
         api_key=config.groq_api_key,
         temperature=0,
         max_retries=3,
-        n: 1,
+        n=1,
     )
     
     llm = LangchainLLMWrapper(eval_chat_model)
