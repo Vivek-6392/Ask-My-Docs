@@ -331,7 +331,7 @@ All settings live in `.env` (see `.env.example`):
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `GROQ_API_KEY` | — | **Required.** Get free key at [console.groq.com](https://console.groq.com) |
-| `LLM_MODEL` | `llama-3.3-70b-versatile` | Groq model name |
+| `LLM_MODEL` | `llama-3.1-8b-instant` | Groq model name |
 | `EMBEDDING_MODEL` | `BAAI/bge-small-en-v1.5` | HuggingFace model (downloaded locally, no API key) |
 | `RERANKER_MODEL` | `cross-encoder/ms-marco-MiniLM-L-6-v2` | HuggingFace cross-encoder |
 | `CHUNK_SIZE` | `512` | Token chunk size |
@@ -378,7 +378,7 @@ Query: "What is the refund policy for digital products?"
                       Much more accurate than bi-encoder
                                │
                                ▼
-                   5. GPT-4o-mini GENERATION
+                   5. GROQ GENERATION
                       with numbered citation markers
                       enforced by system prompt
 ```

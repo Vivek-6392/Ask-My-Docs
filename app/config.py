@@ -14,7 +14,7 @@
 # class AppConfig:
 #     # LLM — Groq
 #     groq_api_key: str = groq_api_key
-#     llm_model: str = "llama-3.3-70b-versatile"
+#     llm_model: str = "llama-3.1-8b-instant"
 #     llm_temperature: float = 0.0
 #     llm_max_tokens: int = 1024
 
@@ -38,7 +38,7 @@
 
 #     # Evaluation
 #     eval_dataset_path: str = "./evaluation/eval_dataset.json"
-#     ragas_llm_model: str = "llama-3.3-70b-versatile"
+#     ragas_llm_model: str = "llama-3.1-8b-instant"
 
 #     # UI
 #     app_title: str = "Ask My Docs"
@@ -48,7 +48,7 @@
 #     def from_env(cls) -> AppConfig:
 #         return cls(
 #             groq_api_key=os.getenv("GROQ_API_KEY", ""),
-#             llm_model=os.getenv("LLM_MODEL", "llama-3.3-70b-versatile"),
+#             llm_model=os.getenv("LLM_MODEL", "llama-3.1-8b-instant"),
 #             llm_temperature=float(os.getenv("LLM_TEMPERATURE", "0.0")),
 #             llm_max_tokens=int(os.getenv("LLM_MAX_TOKENS", "1024")),
 #             embedding_model=os.getenv("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5"),
@@ -62,7 +62,7 @@
 #             chunk_size=int(os.getenv("CHUNK_SIZE", "512")),
 #             chunk_overlap=int(os.getenv("CHUNK_OVERLAP", "64")),
 #             eval_dataset_path=os.getenv("EVAL_DATASET_PATH", "./evaluation/eval_dataset.json"),
-#             ragas_llm_model=os.getenv("RAGAS_LLM_MODEL", "llama-3.3-70b-versatile"),
+#             ragas_llm_model=os.getenv("RAGAS_LLM_MODEL", "llama-3.1-8b-instant"),
 #             app_title=os.getenv("APP_TITLE", "Ask My Docs"),
 #             max_history=int(os.getenv("MAX_HISTORY", "20")),
 #         )
@@ -121,7 +121,7 @@ def get_env(key: str, default: str = ""):
 class AppConfig:
     # ================= LLM =================
     groq_api_key: str = ""
-    llm_model: str = "llama-3.3-70b-versatile"
+    llm_model: str = "llama-3.1-8b-instant"
     llm_temperature: float = 0.3
     llm_max_tokens: int = 2048
 
@@ -159,7 +159,7 @@ class AppConfig:
             groq_api_key=get_env("GROQ_API_KEY"),
 
             # LLM
-            llm_model=get_env("LLM_MODEL", "llama-3.3-70b-versatile"),
+            llm_model=get_env("LLM_MODEL", "llama-3.1-8b-instant"),
             llm_temperature=float(get_env("LLM_TEMPERATURE", "0.3")),
             llm_max_tokens=int(get_env("LLM_MAX_TOKENS", "2048")),
 
