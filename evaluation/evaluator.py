@@ -10,6 +10,7 @@ import sys
 import os
 from pathlib import Path
 from typing import Any
+from ragas.run_config import RunConfig
 
 # Allow running from repo root
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -41,7 +42,12 @@ def run_evaluation(dataset_path: str, config: AppConfig) -> dict[str, float]:
     pipeline = RAGPipeline(config)
 
     questions, answers, contexts, ground_truths = [], [], [], []
-
+    # Define a run config that limits concurrency
+    run_config = RunConfig(
+        max_workers=1,      # Forces 1-by-1 processing to avoid Groq 429s
+        timeout=60,         # Gives Groq enough time to think
+        max_retries=3       # Built-in retry logic
+    )
     # 1. Collect results (This part is fine)
     for rec in records:
         q = rec["question"]
@@ -67,7 +73,7 @@ def run_evaluation(dataset_path: str, config: AppConfig) -> dict[str, float]:
         api_key=config.groq_api_key,
         temperature=0,
         max_retries=3,
-        model_kwargs={"n": 1} 
+        n=1,
     )
     
     llm = LangchainLLMWrapper(eval_chat_model)
@@ -86,7 +92,7 @@ def run_evaluation(dataset_path: str, config: AppConfig) -> dict[str, float]:
         metrics=[faithfulness, answer_relevancy, context_precision, context_recall],
         llm=llm,
         embeddings=emb,
-        is_async=False,   # <--- STOP parallel requests
+        run_config=run_config,  # <--- STOP parallel requests
     )
 
     # Convert Result object to dictionary of means
