@@ -13,10 +13,11 @@ from pathlib import Path
 
 from datasets import Dataset
 from groq import Groq
+from openai import OpenAI  # ✅ RAGAS expects OpenAI client format
 from ragas import evaluate
 from ragas.embeddings import HuggingFaceEmbeddings as RagasHFEmbeddings
 from ragas.llms import llm_factory
-from ragas.metrics.collections import (
+from ragas.metrics.collections import (  # ✅ Use collections per deprecation warning
     Faithfulness,
     AnswerRelevancy,
     ContextPrecision,
@@ -53,7 +54,6 @@ def run_evaluation(dataset_path: str, config: AppConfig) -> dict[str, float]:
     for rec in records:
         q = rec["question"]
         gt = rec["ground_truth"]
-
         result = pipeline.query(q)
 
         questions.append(q)
@@ -61,22 +61,22 @@ def run_evaluation(dataset_path: str, config: AppConfig) -> dict[str, float]:
         contexts.append([c["text"] for c in result["chunks"]])
         ground_truths.append(gt)
 
-    ds = Dataset.from_dict(
-        {
-            "question": questions,
-            "answer": answers,
-            "contexts": contexts,
-            "ground_truth": ground_truths,
-        }
-    )
+    ds = Dataset.from_dict({
+        "question": questions,
+        "answer": answers,
+        "contexts": contexts,
+        "ground_truth": ground_truths,
+    })
 
-    groq_client = Groq(api_key=config.groq_api_key)
-
-    llm = llm_factory(
-        model=config.ragas_llm_model,
-        client=groq_client,
-        provider="groq",
+    # ✅ CRITICAL: Use OpenAI client wrapper for Groq (per RAGAS deprecation message)
+    # RAGAS collections metrics require modern InstructorLLM via llm_factory + OpenAI client
+    openai_client = OpenAI(
+        api_key=config.groq_api_key,        # Use Groq key
+        base_url="https://api.groq.com/openai/v1",  # Groq OpenAI-compatible endpoint
     )
+    
+    # ✅ Exact pattern from deprecation warning + your original comment
+    llm = llm_factory(config.ragas_llm_model, client=openai_client)
 
     emb = RagasHFEmbeddings(model=config.embedding_model)
 
@@ -99,20 +99,9 @@ def run_evaluation(dataset_path: str, config: AppConfig) -> dict[str, float]:
         raise ValueError("RAGAS returned empty scores")
 
     scores: dict[str, float] = {}
-    metric_names = result.scores[0].keys()
-
-    for metric in metric_names:
-        valid: list[float] = []
-        for row in result.scores:
-            val = row.get(metric)
-            if val is None:
-                continue
-            try:
-                if not math.isnan(val):
-                    valid.append(val)
-            except TypeError:
-                continue
-
+    for metric in result.scores[0].keys():
+        valid = [row[metric] for row in result.scores 
+                if row.get(metric) is not None and not math.isnan(row[metric])]
         scores[metric] = sum(valid) / len(valid) if valid else float("nan")
 
     return scores
@@ -121,7 +110,7 @@ def run_evaluation(dataset_path: str, config: AppConfig) -> dict[str, float]:
 def check_thresholds(scores: dict[str, float], thresholds: dict[str, float]) -> bool:
     passed = True
     for metric, threshold in thresholds.items():
-        val = scores.get(metric, float("nan"))
+        val = scores.get(metric, 0.0)
         if math.isnan(val):
             print(f"  ⚠️  {metric}: NaN — all evaluation requests failed for this metric")
             passed = False
@@ -162,7 +151,6 @@ def main() -> None:
     Path(args.output).parent.mkdir(parents=True, exist_ok=True)
     with open(args.output, "w", encoding="utf-8") as f:
         json.dump({"scores": scores, "passed": passed}, f, indent=2)
-
     print(f"\n💾 Results saved to {args.output}")
 
     if not passed:
