@@ -13,10 +13,9 @@ from pathlib import Path
 
 from datasets import Dataset
 from groq import Groq
-from langchain_groq import ChatGroq
 from ragas import evaluate
 from ragas.embeddings import HuggingFaceEmbeddings as RagasHFEmbeddings
-from ragas.llms import LangchainLLMWrapper
+from ragas.llms import llm_factory
 from ragas.metrics.collections import (
     Faithfulness,
     AnswerRelevancy,
@@ -71,17 +70,16 @@ def run_evaluation(dataset_path: str, config: AppConfig) -> dict[str, float]:
         }
     )
 
-    # ✅ Use Langchain ChatGroq wrapper - RAGAS expects OpenAI-compatible chat interface
-    groq_client = ChatGroq(
-        api_key=config.groq_api_key,
-        model_name=config.ragas_llm_model,  # e.g., "llama3-8b-8192" or "llama-3.1-70b-versatile"
-        temperature=0,
+    groq_client = Groq(api_key=config.groq_api_key)
+
+    llm = llm_factory(
+        model=config.ragas_llm_model,
+        client=groq_client,
+        provider="groq",
     )
-    llm = LangchainLLMWrapper(groq_client)
 
     emb = RagasHFEmbeddings(model=config.embedding_model)
 
-    # ✅ Use collections import (removes deprecation warning)
     metrics = [
         Faithfulness(llm=llm),
         AnswerRelevancy(llm=llm, embeddings=emb, strictness=1),
@@ -101,12 +99,20 @@ def run_evaluation(dataset_path: str, config: AppConfig) -> dict[str, float]:
         raise ValueError("RAGAS returned empty scores")
 
     scores: dict[str, float] = {}
-    for metric in result.scores[0].keys():
-        valid = [
-            row[metric]
-            for row in result.scores
-            if row.get(metric) is not None and not math.isnan(row[metric])
-        ]
+    metric_names = result.scores[0].keys()
+
+    for metric in metric_names:
+        valid: list[float] = []
+        for row in result.scores:
+            val = row.get(metric)
+            if val is None:
+                continue
+            try:
+                if not math.isnan(val):
+                    valid.append(val)
+            except TypeError:
+                continue
+
         scores[metric] = sum(valid) / len(valid) if valid else float("nan")
 
     return scores
@@ -115,7 +121,7 @@ def run_evaluation(dataset_path: str, config: AppConfig) -> dict[str, float]:
 def check_thresholds(scores: dict[str, float], thresholds: dict[str, float]) -> bool:
     passed = True
     for metric, threshold in thresholds.items():
-        val = scores.get(metric, 0.0)
+        val = scores.get(metric, float("nan"))
         if math.isnan(val):
             print(f"  ⚠️  {metric}: NaN — all evaluation requests failed for this metric")
             passed = False
@@ -162,8 +168,8 @@ def main() -> None:
     if not passed:
         print("\n❌ Evaluation FAILED — thresholds not met.")
         sys.exit(1)
-
-    print("\n✅ Evaluation PASSED.")
+    else:
+        print("\n✅ Evaluation PASSED.")
 
 
 if __name__ == "__main__":
