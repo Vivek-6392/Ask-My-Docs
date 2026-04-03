@@ -15,7 +15,7 @@ from ragas import evaluate
 from langchain_huggingface import HuggingFaceEmbeddings
 from ragas.embeddings import LangchainEmbeddingsWrapper
 from ragas.llms import llm_factory
-from ragas.metrics.collections import (
+from ragas.metrics import (
     Faithfulness,
     AnswerRelevancy,
     ContextPrecision,
@@ -73,7 +73,6 @@ def build_llm_and_embeddings(config: AppConfig):
         model=config.ragas_llm_model,
         client=openai_client,
     )
-    # Wrap LangChain HF embeddings for RAGAS 0.2.x compatibility
     hf_embeddings = HuggingFaceEmbeddings(model_name=config.embedding_model)
     embeddings = LangchainEmbeddingsWrapper(hf_embeddings)
     return llm, embeddings
