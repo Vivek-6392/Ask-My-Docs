@@ -19,6 +19,7 @@ torch>=2.3.0                   # CPU-only is fine; GPU if available
 
 # ── Vector Store ──────────────────────────────────────────────────────────────
 chromadb>=0.5.0
+protobuf==3.20.3
 
 # ── Sparse Retrieval ──────────────────────────────────────────────────────────
 rank-bm25>=0.2.2
