@@ -73,7 +73,6 @@ def run_evaluation(dataset_path: str, config: AppConfig) -> dict[str, float]:
         api_key=config.groq_api_key,
         temperature=0,
         max_retries=3,
-        n=1,
     )
     
     llm = LangchainLLMWrapper(eval_chat_model)
@@ -95,8 +94,15 @@ def run_evaluation(dataset_path: str, config: AppConfig) -> dict[str, float]:
         run_config=run_config,  # <--- STOP parallel requests
     )
 
-    # Convert Result object to dictionary of means
-    return result.scores
+    # Convert RAGAS result to dict of mean scores
+    if not result.scores:
+        raise ValueError("RAGAS returned empty scores")
+    scores = {}
+
+    for metric in result.scores[0].keys():
+        scores[metric] = sum(row[metric] for row in result.scores) / len(result.scores)
+
+    return scores
 
 def check_thresholds(scores: dict[str, float], thresholds: dict[str, float]) -> bool:
     """Returns True if all scores meet their thresholds."""
