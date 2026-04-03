@@ -28,10 +28,6 @@ from groq import Groq
 from app.config import AppConfig
 from retrieval.pipeline import RAGPipeline
 
-# strictness=1 → RAGAS sends n=1 per request; Groq rejects n>1 with 400
-answer_relevancy = AnswerRelevancy(strictness=1)
-
-
 def load_eval_dataset(path: str) -> list[dict]:
     with open(path) as f:
         return json.load(f)
@@ -76,6 +72,9 @@ def run_evaluation(dataset_path: str, config: AppConfig) -> dict[str, float]:
 
     # Native RAGAS HuggingFace embeddings — no deprecated LangchainEmbeddingsWrapper
     emb = RagasHFEmbeddings(model=config.embedding_model)
+
+    # strictness=1 → RAGAS sends n=1 per request; Groq rejects n>1 with 400
+    answer_relevancy = AnswerRelevancy(strictness=1, llm=llm, embeddings=emb)
 
     result = evaluate(
         dataset=ds,
