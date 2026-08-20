@@ -4,6 +4,7 @@ Streamlit UI components: sidebar, chat panel, upload panel.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import streamlit as st
@@ -11,7 +12,20 @@ import streamlit as st
 from app.config import AppConfig
 from app.session import add_message, clear_history
 from retrieval.ingestor import ingest_files
-from retrieval.pipeline import RAGPipeline, clean_model_response
+from retrieval.pipeline import RAGPipeline
+
+_THINK_BLOCK_RE = re.compile(
+    r"<think\b[^>]*>.*?</think\s*>", re.IGNORECASE | re.DOTALL
+)
+_THINK_OPEN_RE = re.compile(r"<think\b[^>]*>", re.IGNORECASE)
+
+
+def _clean_assistant_message(content: str) -> str:
+    """Hide reasoning from chat history, including messages saved before a reload."""
+    text = _THINK_BLOCK_RE.sub("", content)
+    if opening_tag := _THINK_OPEN_RE.search(text):
+        text = text[:opening_tag.start()]
+    return text.strip()
 
 # ── Sidebar ──────────────────────────────────────────────────────────────────
 
@@ -57,7 +71,7 @@ def render_chat(pipeline: RAGPipeline, config: AppConfig):
     for msg in st.session_state.messages:
         content = msg["content"]
         if msg["role"] == "assistant":
-            content = clean_model_response(content)
+            content = _clean_assistant_message(content)
             msg["content"] = content
 
         with st.chat_message(msg["role"]):
