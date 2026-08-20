@@ -3,20 +3,28 @@ RAGPipeline: orchestrates hybrid retrieval → reranking → generation.
 """
 
 from __future__ import annotations
-import time
+
 import logging
+import re
+import time
 from typing import Any
 
+from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_groq import ChatGroq
-from langchain_core.messages import SystemMessage, HumanMessage
 
-from retrieval.vector_store import VectorStore
 from retrieval.bm25_store import BM25Store
-from retrieval.reranker import CrossEncoderReranker
 from retrieval.fusion import reciprocal_rank_fusion
-from retrieval.prompt import build_rag_prompt, SYSTEM_PROMPT
+from retrieval.prompt import SYSTEM_PROMPT, build_rag_prompt
+from retrieval.reranker import CrossEncoderReranker
+from retrieval.vector_store import VectorStore
 
 logger = logging.getLogger(__name__)
+
+
+def _visible_answer(content: Any) -> str:
+    """Remove model reasoning blocks before returning an answer to the UI."""
+    text = content if isinstance(content, str) else str(content)
+    return re.sub(r"<think\b[^>]*>.*?</think\s*>", "", text, flags=re.IGNORECASE | re.DOTALL).strip()
 
 
 class RAGPipeline:
@@ -73,7 +81,7 @@ class RAGPipeline:
             HumanMessage(content=f"Context:\n{context_str}\n\nQuestion: {question}"),
         ]
         response = self.llm.invoke(messages)
-        answer = response.content
+        answer = _visible_answer(response.content)
 
         elapsed = (time.perf_counter() - t0) * 1000
 

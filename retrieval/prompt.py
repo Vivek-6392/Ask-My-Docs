@@ -12,6 +12,7 @@ Rules:
 3. Be concise and factual. Avoid speculation.
 4. If multiple chunks support a claim, cite all of them: [1][3].
 5. Never fabricate information or draw on outside knowledge.
+6. Return only the final answer. Do not include reasoning, analysis, or `<think>` blocks.
 """
 
 
