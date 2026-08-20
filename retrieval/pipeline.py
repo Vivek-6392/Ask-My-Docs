@@ -20,11 +20,23 @@ from retrieval.vector_store import VectorStore
 
 logger = logging.getLogger(__name__)
 
+_THINK_BLOCK_RE = re.compile(
+    r"<think\b[^>]*>.*?</think\s*>", re.IGNORECASE | re.DOTALL
+)
+_THINK_OPEN_RE = re.compile(r"<think\b[^>]*>", re.IGNORECASE)
 
-def _visible_answer(content: Any) -> str:
-    """Remove model reasoning blocks before returning an answer to the UI."""
+
+def clean_model_response(content: Any) -> str:
+    """Return only the visible answer, excluding model reasoning blocks."""
     text = content if isinstance(content, str) else str(content)
-    return re.sub(r"<think\b[^>]*>.*?</think\s*>", "", text, flags=re.IGNORECASE | re.DOTALL).strip()
+    text = _THINK_BLOCK_RE.sub("", text)
+
+    # An unclosed reasoning tag has no safely identifiable final answer, so
+    # hide the remaining content instead of exposing the model's reasoning.
+    if opening_tag := _THINK_OPEN_RE.search(text):
+        text = text[:opening_tag.start()]
+
+    return text.strip()
 
 
 class RAGPipeline:
@@ -81,7 +93,7 @@ class RAGPipeline:
             HumanMessage(content=f"Context:\n{context_str}\n\nQuestion: {question}"),
         ]
         response = self.llm.invoke(messages)
-        answer = _visible_answer(response.content)
+        answer = clean_model_response(response.content)
 
         elapsed = (time.perf_counter() - t0) * 1000
 

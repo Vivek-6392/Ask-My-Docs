@@ -3,14 +3,15 @@ Streamlit UI components: sidebar, chat panel, upload panel.
 """
 
 from __future__ import annotations
-import streamlit as st
+
 from pathlib import Path
 
-from app.session import add_message, clear_history
-from app.config import AppConfig
-from retrieval.pipeline import RAGPipeline
-from retrieval.ingestor import ingest_files
+import streamlit as st
 
+from app.config import AppConfig
+from app.session import add_message, clear_history
+from retrieval.ingestor import ingest_files
+from retrieval.pipeline import RAGPipeline, clean_model_response
 
 # ── Sidebar ──────────────────────────────────────────────────────────────────
 
@@ -54,8 +55,13 @@ def render_chat(pipeline: RAGPipeline, config: AppConfig):
 
     # Render history
     for msg in st.session_state.messages:
+        content = msg["content"]
+        if msg["role"] == "assistant":
+            content = clean_model_response(content)
+            msg["content"] = content
+
         with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
+            st.markdown(content)
             if msg.get("citations"):
                 _render_citations(msg["citations"])
 

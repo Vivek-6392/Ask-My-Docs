@@ -100,3 +100,19 @@ class TestRAGPipeline:
         result = RAGPipeline(_make_config()).query("What is the answer?")
 
         assert result["answer"] == "Final answer [1]."
+
+    def test_query_hides_unclosed_model_thinking_text(
+        self, mock_reranker_cls, mock_bm25_cls, mock_vector_cls, mock_llm_cls
+    ):
+        from retrieval.pipeline import RAGPipeline
+
+        mock_vector_cls.return_value.similarity_search.return_value = []
+        mock_bm25_cls.return_value.search.return_value = []
+        mock_reranker_cls.return_value.rerank.return_value = []
+        mock_llm_cls.return_value.invoke.return_value.content = (
+            "<think>Reason through the answer privately."
+        )
+
+        result = RAGPipeline(_make_config()).query("What is the answer?")
+
+        assert result["answer"] == ""
