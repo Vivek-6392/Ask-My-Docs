@@ -11,7 +11,7 @@ def _make_config():
     from app.config import AppConfig
     return AppConfig(
         groq_api_key="gsk-test",
-        llm_model="llama-3.1-8b-instant",
+        llm_model="qwen/qwen3.6-27b",
         chroma_persist_dir="/tmp/test_chroma",
         bm25_top_k=5,
         vector_top_k=5,

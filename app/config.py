@@ -40,7 +40,7 @@ def get_env(key: str, default: str = "") -> str:
 class AppConfig:
     # ================= LLM =================
     groq_api_key: str = ""
-    llm_model: str = "llama-3.1-8b-instant"
+    llm_model: str = "qwen/qwen3.6-27b"
     llm_temperature: float = 0.3
     llm_max_tokens: int = 2048
 
@@ -68,7 +68,7 @@ class AppConfig:
 
     # ================= Evaluation =================
     eval_dataset_path: str = "./evaluation/eval_dataset.json"
-    ragas_llm_model: str = "llama-3.1-8b-instant"
+    ragas_llm_model: str = "qwen/qwen3.6-27b"
 
     # ================= UI =================
     app_title: str = "Ask My Docs"
@@ -79,7 +79,7 @@ class AppConfig:
         return cls(
             groq_api_key=get_env("GROQ_API_KEY"),
 
-            llm_model=get_env("LLM_MODEL", "llama-3.1-8b-instant"),
+            llm_model=get_env("LLM_MODEL", "qwen/qwen3.6-27b"),
             llm_temperature=float(get_env("LLM_TEMPERATURE", "0.3")),
             llm_max_tokens=int(get_env("LLM_MAX_TOKENS", "2048")),
 
@@ -104,7 +104,7 @@ class AppConfig:
                 "EVAL_DATASET_PATH",
                 "./evaluation/eval_dataset.json",
             ),
-            ragas_llm_model=get_env("RAGAS_LLM_MODEL", "llama-3.1-8b-instant"),
+            ragas_llm_model=get_env("RAGAS_LLM_MODEL", "qwen/qwen3.6-27b"),
 
             app_title=get_env("APP_TITLE", "Ask My Docs"),
             max_history=int(get_env("MAX_HISTORY", "20")),
