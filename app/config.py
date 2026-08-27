@@ -43,7 +43,7 @@ def get_env(key: str, default: str = "") -> str:
 class AppConfig:
     # ================= LLM =================
     groq_api_key: str = ""
-    llm_model: str = "qwen/qwen3.6-27b"
+    llm_model: str = "openai/gpt-oss-120b"
     llm_temperature: float = 0.3
     llm_max_tokens: int = 2048
 
@@ -81,7 +81,7 @@ class AppConfig:
     def from_env(cls) -> AppConfig:
         return cls(
             groq_api_key=get_env("GROQ_API_KEY"),
-            llm_model=get_env("LLM_MODEL", "qwen/qwen3.6-27b"),
+            llm_model=get_env("LLM_MODEL", "openai/gpt-oss-120b"),
             llm_temperature=float(get_env("LLM_TEMPERATURE", "0.3")),
             llm_max_tokens=int(get_env("LLM_MAX_TOKENS", "2048")),
             embedding_model=get_env("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5"),
