@@ -71,7 +71,7 @@ class AppConfig:
 
     # ================= Evaluation =================
     eval_dataset_path: str = "./evaluation/eval_dataset.json"
-    ragas_llm_model: str = "qwen/qwen3.6-27b"
+    ragas_llm_model: str = "groq/compound-mini"
 
     # ================= UI =================
     app_title: str = "Ask My Docs"
@@ -101,7 +101,7 @@ class AppConfig:
                 "EVAL_DATASET_PATH",
                 "./evaluation/eval_dataset.json",
             ),
-            ragas_llm_model=get_env("RAGAS_LLM_MODEL", "qwen/qwen3.6-27b"),
+            ragas_llm_model=get_env("RAGAS_LLM_MODEL", "groq/compound-mini"),
             app_title=get_env("APP_TITLE", "Ask My Docs"),
             max_history=int(get_env("MAX_HISTORY", "20")),
         )
