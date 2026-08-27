@@ -3,34 +3,50 @@ Evaluation pipeline using RAGAS metrics.
 Run standalone:
     python -m evaluation.evaluator --dataset evaluation/eval_dataset.json
 """
+
 from __future__ import annotations
+
 import argparse
 import json
+import logging
 import math
+import os
 import sys
+import warnings
 from pathlib import Path
-from datasets import Dataset
-from langchain_groq import ChatGroq
-from langchain_huggingface import HuggingFaceEmbeddings
-from ragas import evaluate
-from ragas.embeddings import LangchainEmbeddingsWrapper
-from ragas.llms import LangchainLLMWrapper
-from ragas.metrics import (
-    Faithfulness,
+
+os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
+os.environ["TRANSFORMERS_VERBOSITY"] = "error"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+warnings.filterwarnings("ignore")
+logging.getLogger("transformers").setLevel(logging.ERROR)
+logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
+
+
+from datasets import Dataset  # noqa: E402
+from langchain_groq import ChatGroq  # noqa: E402
+from langchain_huggingface import HuggingFaceEmbeddings  # noqa: E402
+from ragas import evaluate  # noqa: E402
+from ragas.embeddings import LangchainEmbeddingsWrapper  # noqa: E402
+from ragas.llms import LangchainLLMWrapper  # noqa: E402
+from ragas.metrics import (  # noqa: E402
     AnswerRelevancy,
     ContextPrecision,
     ContextRecall,
+    Faithfulness,
 )
-from ragas.run_config import RunConfig
+from ragas.run_config import RunConfig  # noqa: E402
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from app.config import AppConfig
-from retrieval.pipeline import RAGPipeline
+
+from app.config import AppConfig  # noqa: E402
+from retrieval.pipeline import RAGPipeline  # noqa: E402
 
 THRESHOLDS = {
-    "faithfulness": 0.80,
-    "answer_relevancy": 0.75,
-    "context_precision": 0.70,
-    "context_recall": 0.60,
+    "faithfulness": 0.85,
+    "answer_relevancy": 0.80,
+    "context_precision": 0.75,
+    "context_recall": 0.70,
 }
 
 
@@ -68,6 +84,10 @@ def build_llm_and_embeddings(config: AppConfig):
     chat_model = ChatGroq(
         api_key=config.groq_api_key,
         model=config.ragas_llm_model,
+        temperature=0.0,
+        max_tokens=4096,
+        max_retries=3,
+        request_timeout=120.0,
     )
     llm = LangchainLLMWrapper(chat_model)
     hf_embeddings = HuggingFaceEmbeddings(model_name=config.embedding_model)
@@ -83,7 +103,7 @@ def run_evaluation(dataset_path: str, config: AppConfig) -> dict[str, float]:
 
     run_config = RunConfig(
         max_workers=1,
-        timeout=60,
+        timeout=120,
         max_retries=3,
     )
 
@@ -116,9 +136,7 @@ def run_evaluation(dataset_path: str, config: AppConfig) -> dict[str, float]:
             if isinstance(value, float) and math.isnan(value):
                 continue
             valid_values.append(float(value))
-        scores[metric] = (
-            sum(valid_values) / len(valid_values) if valid_values else float("nan")
-        )
+        scores[metric] = sum(valid_values) / len(valid_values) if valid_values else float("nan")
 
     return scores
 
@@ -139,6 +157,11 @@ def check_thresholds(scores: dict[str, float], thresholds: dict[str, float]) -> 
 
 
 def main() -> None:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
     parser = argparse.ArgumentParser(description="RAG Evaluation Pipeline")
     parser.add_argument("--dataset", default="evaluation/eval_dataset.json")
     parser.add_argument("--output", default="evaluation/results.json")

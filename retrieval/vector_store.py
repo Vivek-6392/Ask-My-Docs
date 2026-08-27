@@ -4,6 +4,7 @@ No API key required — model is downloaded once and cached locally.
 """
 
 from __future__ import annotations
+
 import logging
 import uuid
 
@@ -17,8 +18,22 @@ logger = logging.getLogger(__name__)
 class VectorStore:
     COLLECTION_NAME = "ask_my_docs"
 
-    def __init__(self, config):
+    def __init__(
+        self,
+        config,
+        session_id: str = "default",
+        collection_name: str | None = None,
+    ):
         self.config = config
+        self.session_id = session_id
+        if collection_name:
+            self.collection_name = collection_name
+        elif session_id == "default":
+            self.collection_name = self.COLLECTION_NAME
+        else:
+            clean_id = session_id.replace("-", "_")
+            self.collection_name = f"session_{clean_id}"
+
         # Downloaded once to ~/.cache/huggingface — runs fully offline after that
         self.embeddings = HuggingFaceEmbeddings(
             model_name=config.embedding_model,
@@ -30,7 +45,7 @@ class VectorStore:
             settings=Settings(anonymized_telemetry=False),
         )
         self._collection = self._client.get_or_create_collection(
-            name=self.COLLECTION_NAME,
+            name=self.collection_name,
             metadata={"hnsw:space": "cosine"},
         )
 
@@ -76,18 +91,20 @@ class VectorStore:
             results["metadatas"][0],
             results["distances"][0],
         ):
-            hits.append({
-                "text": doc,
-                "metadata": meta,
-                "score": 1 - dist,   # cosine similarity
-                "source": meta.get("source", "unknown"),
-                "page": meta.get("page", "?"),
-            })
+            hits.append(
+                {
+                    "text": doc,
+                    "metadata": meta,
+                    "score": 1 - dist,  # cosine similarity
+                    "source": meta.get("source", "unknown"),
+                    "page": meta.get("page", "?"),
+                }
+            )
         return hits
 
     def delete_collection(self) -> None:
-        self._client.delete_collection(self.COLLECTION_NAME)
+        self._client.delete_collection(self.collection_name)
         self._collection = self._client.get_or_create_collection(
-            name=self.COLLECTION_NAME,
+            name=self.collection_name,
             metadata={"hnsw:space": "cosine"},
         )

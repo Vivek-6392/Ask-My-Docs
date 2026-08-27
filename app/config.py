@@ -6,12 +6,15 @@ Centralised configuration — supports:
 """
 
 from __future__ import annotations
+
 import os
 from dataclasses import dataclass
+
 from dotenv import load_dotenv
 
 try:
     import streamlit as st
+
     STREAMLIT_AVAILABLE = True
 except ImportError:
     STREAMLIT_AVAILABLE = False
@@ -78,14 +81,11 @@ class AppConfig:
     def from_env(cls) -> AppConfig:
         return cls(
             groq_api_key=get_env("GROQ_API_KEY"),
-
             llm_model=get_env("LLM_MODEL", "qwen/qwen3.6-27b"),
             llm_temperature=float(get_env("LLM_TEMPERATURE", "0.3")),
             llm_max_tokens=int(get_env("LLM_MAX_TOKENS", "2048")),
-
             embedding_model=get_env("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5"),
             embedding_dim=int(get_env("EMBEDDING_DIM", "384")),
-
             vector_top_k=int(get_env("VECTOR_TOP_K", "40")),
             bm25_top_k=int(get_env("BM25_TOP_K", "25")),
             rerank_top_k=int(get_env("RERANK_TOP_K", "10")),
@@ -93,19 +93,15 @@ class AppConfig:
                 "RERANKER_MODEL",
                 "cross-encoder/ms-marco-MiniLM-L-6-v2",
             ),
-
             chroma_persist_dir=get_env("CHROMA_PERSIST_DIR", "./chroma_db"),
             upload_dir=get_env("UPLOAD_DIR", "./uploaded_docs"),
-
             chunk_size=int(get_env("CHUNK_SIZE", "512")),
             chunk_overlap=int(get_env("CHUNK_OVERLAP", "64")),
-
             eval_dataset_path=get_env(
                 "EVAL_DATASET_PATH",
                 "./evaluation/eval_dataset.json",
             ),
             ragas_llm_model=get_env("RAGAS_LLM_MODEL", "qwen/qwen3.6-27b"),
-
             app_title=get_env("APP_TITLE", "Ask My Docs"),
             max_history=int(get_env("MAX_HISTORY", "20")),
         )

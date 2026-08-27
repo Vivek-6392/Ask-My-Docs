@@ -4,6 +4,7 @@ candidate passages retrieved by hybrid search.
 """
 
 from __future__ import annotations
+
 import logging
 
 from sentence_transformers import CrossEncoder
@@ -32,10 +33,7 @@ class CrossEncoderReranker:
         pairs = [(query, c["text"]) for c in candidates]
         scores = self._model.predict(pairs)
 
-        scored = [
-            {**c, "score": float(s)}
-            for c, s in zip(candidates, scores)
-        ]
+        scored = [{**c, "score": float(s)} for c, s in zip(candidates, scores)]
         scored.sort(key=lambda x: x["score"], reverse=True)
 
         # Log top and bottom scores to help diagnose recall drops

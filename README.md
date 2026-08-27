@@ -37,10 +37,11 @@
 │      │  Reranker (MiniLM)  │                                    │
 │      └──────────┬──────────┘                                    │
 │                 ▼                                               │
-│      ┌─────────────────────┐                                    │
-│      │  GPT-4o-mini        │  (generation + citations)         │
-│      │  + Citation Prompt  │                                    │
-│      └─────────────────────┘                                    │
+│      ┌──────────────────────────────────┐                       │
+│      │  Groq LLM                        │  (generation +        │
+│      │  (see AppConfig.llm_model)       │   citations)          │
+│      │  + Citation Prompt               │                       │
+│      └──────────────────────────────────┘                       │
 └─────────────────────────────────────────────────────────────────┘
                              │
           ┌──────────────────┴───────────────────┐
@@ -341,15 +342,14 @@ All settings live in `.env` (see `.env.example`):
 | `RERANK_TOP_K` | `5` | Final chunks after reranking |
 | `CHROMA_PERSIST_DIR` | `./chroma_db` | ChromaDB storage path |
 
-### Available Groq models
+### Available Groq Free Models
 
 | Model | Speed | Context | Best for |
 |-------|-------|---------|----------|
-| `llama-3.3-70b-versatile` | Fast | 128k | Best quality (default) |
-| `llama-3.1-8b-instant` | Ultra-fast | 128k | Low-latency use cases |
-| `mixtral-8x7b-32768` | Fast | 32k | Long-document tasks |
-| `gemma2-9b-it` | Fast | 8k | Lightweight deployment |
-
+| `openai/gpt-oss-120b` | ~500 t/s | 131k | Best overall quality & reasoning |
+| `openai/gpt-oss-20b` | ~1000 t/s | 131k | Fast tool calling & low latency |
+| `groq/compound` | ~450 t/s | 131k | Agentic search, web research & tool use |
+| `groq/compound-mini` | ~450 t/s | 131k | Faster/lighter agentic workloads |
 ---
 
 ## How the Hybrid Retrieval Works

@@ -14,9 +14,7 @@ from app.session import add_message, clear_history
 from retrieval.ingestor import ingest_files
 from retrieval.pipeline import RAGPipeline
 
-_THINK_BLOCK_RE = re.compile(
-    r"<think\b[^>]*>.*?</think\s*>", re.IGNORECASE | re.DOTALL
-)
+_THINK_BLOCK_RE = re.compile(r"<think\b[^>]*>.*?</think\s*>", re.IGNORECASE | re.DOTALL)
 _THINK_OPEN_RE = re.compile(r"<think\b[^>]*>", re.IGNORECASE)
 
 
@@ -24,10 +22,12 @@ def _clean_assistant_message(content: str) -> str:
     """Hide reasoning from chat history, including messages saved before a reload."""
     text = _THINK_BLOCK_RE.sub("", content)
     if opening_tag := _THINK_OPEN_RE.search(text):
-        text = text[:opening_tag.start()]
+        text = text[: opening_tag.start()]
     return text.strip()
 
+
 # ── Sidebar ──────────────────────────────────────────────────────────────────
+
 
 def render_sidebar(pipeline: RAGPipeline, config: AppConfig):
     st.markdown("## 📚 Ask My Docs")
@@ -42,9 +42,24 @@ def render_sidebar(pipeline: RAGPipeline, config: AppConfig):
 
     # Retrieval settings
     st.markdown("**Retrieval Settings**")
-    config.rerank_top_k = st.slider("Final context chunks", 1, 5, config.rerank_top_k)
-    config.vector_top_k = st.slider("Vector candidates", 5, 30, config.vector_top_k)
-    config.bm25_top_k = st.slider("BM25 candidates", 5, 30, config.bm25_top_k)
+    st.session_state.rerank_top_k = st.slider(
+        "Final context chunks",
+        1,
+        5,
+        int(st.session_state.get("rerank_top_k", config.rerank_top_k)),
+    )
+    st.session_state.vector_top_k = st.slider(
+        "Vector candidates",
+        5,
+        30,
+        int(st.session_state.get("vector_top_k", config.vector_top_k)),
+    )
+    st.session_state.bm25_top_k = st.slider(
+        "BM25 candidates",
+        5,
+        30,
+        int(st.session_state.get("bm25_top_k", config.bm25_top_k)),
+    )
 
     st.divider()
 
@@ -64,6 +79,7 @@ def render_sidebar(pipeline: RAGPipeline, config: AppConfig):
 
 # ── Chat Panel ───────────────────────────────────────────────────────────────
 
+
 def render_chat(pipeline: RAGPipeline, config: AppConfig):
     st.markdown("### 💬 Chat with your documents")
 
@@ -81,7 +97,7 @@ def render_chat(pipeline: RAGPipeline, config: AppConfig):
 
     # Input
     if prompt := st.chat_input("Ask anything about your documents…"):
-        add_message("user", prompt)
+        add_message("user", prompt, max_history=config.max_history)
         with st.chat_message("user"):
             st.markdown(prompt)
 
@@ -89,9 +105,9 @@ def render_chat(pipeline: RAGPipeline, config: AppConfig):
             with st.spinner("Thinking…"):
                 result = pipeline.query(
                     question=prompt,
-                    top_k=config.rerank_top_k,
-                    vector_k=config.vector_top_k,
-                    bm25_k=config.bm25_top_k,
+                    top_k=st.session_state.get("rerank_top_k", config.rerank_top_k),
+                    vector_k=st.session_state.get("vector_top_k", config.vector_top_k),
+                    bm25_k=st.session_state.get("bm25_top_k", config.bm25_top_k),
                 )
 
             answer = result["answer"]
@@ -103,7 +119,7 @@ def render_chat(pipeline: RAGPipeline, config: AppConfig):
             if st.session_state.retrieval_debug:
                 _render_debug(result)
 
-        add_message("assistant", answer, citations)
+        add_message("assistant", answer, citations, max_history=config.max_history)
 
 
 def _render_citations(citations: list[dict]):
@@ -122,19 +138,24 @@ def _render_citations(citations: list[dict]):
 
 def _render_debug(result: dict):
     with st.expander("🔍 Retrieval Debug", expanded=False):
-        st.json({
-            "vector_hits": result.get("vector_hits", 0),
-            "bm25_hits": result.get("bm25_hits", 0),
-            "after_rerank": result.get("after_rerank", 0),
-            "latency_ms": result.get("latency_ms", 0),
-        })
+        st.json(
+            {
+                "vector_hits": result.get("vector_hits", 0),
+                "bm25_hits": result.get("bm25_hits", 0),
+                "after_rerank": result.get("after_rerank", 0),
+                "latency_ms": result.get("latency_ms", 0),
+            }
+        )
         st.markdown("**Reranked chunks:**")
         for chunk in result.get("chunks", []):
-            st.markdown(f"- `{chunk['source']}` p{chunk.get('page','?')} — score {chunk['score']:.4f}")
+            st.markdown(
+                f"- `{chunk['source']}` p{chunk.get('page', '?')} — score {chunk['score']:.4f}"
+            )
             st.caption(chunk["text"][:200] + "…")
 
 
 # ── Upload Panel ─────────────────────────────────────────────────────────────
+
 
 def render_upload_panel(pipeline: RAGPipeline, config: AppConfig):
     st.markdown("### 📂 Upload & Index Documents")

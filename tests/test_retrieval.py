@@ -3,14 +3,15 @@ Unit tests for retrieval components.
 Run with:  pytest tests/ -v
 """
 
-import pytest
-from unittest.mock import MagicMock, patch
-from retrieval.fusion import reciprocal_rank_fusion
-from retrieval.prompt import build_rag_prompt, SYSTEM_PROMPT
-from retrieval.bm25_store import _tokenize
+import json
+from types import SimpleNamespace
 
+from retrieval.bm25_store import BM25Store, _tokenize
+from retrieval.fusion import reciprocal_rank_fusion
+from retrieval.prompt import SYSTEM_PROMPT, build_rag_prompt
 
 # ── RRF tests ────────────────────────────────────────────────────────────────
+
 
 class TestRRF:
     def _make_doc(self, text: str, score: float) -> dict:
@@ -52,6 +53,7 @@ class TestRRF:
 
 # ── Tokenizer tests ───────────────────────────────────────────────────────────
 
+
 class TestTokenizer:
     def test_lowercases(self):
         tokens = _tokenize("Hello World")
@@ -72,6 +74,7 @@ class TestTokenizer:
 
 
 # ── Prompt builder tests ──────────────────────────────────────────────────────
+
 
 class TestPromptBuilder:
     def _make_chunk(self, i: int) -> dict:
@@ -123,3 +126,126 @@ class TestPromptBuilder:
         context_str, citations = build_rag_prompt([])
         assert context_str == ""
         assert citations == []
+
+
+# ── BM25Store tests ───────────────────────────────────────────────────────────
+
+
+class TestBM25Store:
+    def test_bm25_session_isolation(self, tmp_path):
+        config = SimpleNamespace(chroma_persist_dir=str(tmp_path))
+        store_user1 = BM25Store(config, session_id="user_1")
+        store_user2 = BM25Store(config, session_id="user_2")
+
+        store_user1.add_chunks(
+            [
+                {
+                    "text": "python programming language code and guide",
+                    "metadata": {"source": "u1.txt"},
+                },
+                {
+                    "text": "general architecture overview without any matching terms",
+                    "metadata": {"source": "u1_other1.txt"},
+                },
+                {
+                    "text": "sample documentation details for testing indexing",
+                    "metadata": {"source": "u1_other2.txt"},
+                },
+            ]
+        )
+        store_user2.add_chunks(
+            [
+                {
+                    "text": "rust systems programming code and memory safety",
+                    "metadata": {"source": "u2.txt"},
+                },
+                {
+                    "text": "general architecture overview without any matching terms",
+                    "metadata": {"source": "u2_other1.txt"},
+                },
+                {
+                    "text": "sample documentation details for testing indexing",
+                    "metadata": {"source": "u2_other2.txt"},
+                },
+            ]
+        )
+
+        # User 1 searches python -> found
+        hits_u1 = store_user1.search("python")
+        assert len(hits_u1) == 1
+        assert hits_u1[0]["source"] == "u1.txt"
+
+        # User 2 searches python -> nothing
+        hits_u2 = store_user2.search("python")
+        assert len(hits_u2) == 0
+
+        # User 2 searches rust -> found
+        hits_u2_rust = store_user2.search("rust")
+        assert len(hits_u2_rust) == 1
+        assert hits_u2_rust[0]["source"] == "u2.txt"
+
+    def test_bm25_json_persistence(self, tmp_path):
+        config = SimpleNamespace(chroma_persist_dir=str(tmp_path))
+        store = BM25Store(config, session_id="test_session")
+        chunks = [
+            {
+                "text": "artificial intelligence and machine learning models",
+                "metadata": {"source": "ai.txt", "page": 1},
+            },
+            {
+                "text": "recipes for cooking Italian dishes and pasta",
+                "metadata": {"source": "food.txt", "page": 2},
+            },
+            {
+                "text": "astronomy and space exploration missions",
+                "metadata": {"source": "space.txt", "page": 3},
+            },
+        ]
+        store.add_chunks(chunks)
+
+        index_file = tmp_path / "bm25_index_test_session.json"
+        assert index_file.exists()
+        with open(index_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        assert len(data) == 3
+        assert data[0]["text"] == "artificial intelligence and machine learning models"
+
+        # Reload store from disk
+        reloaded_store = BM25Store(config, session_id="test_session")
+        hits = reloaded_store.search("intelligence")
+        assert len(hits) == 1
+        assert hits[0]["source"] == "ai.txt"
+
+
+# ── Session helper tests ──────────────────────────────────────────────────────
+
+
+class TestSessionHelpers:
+    def test_add_message_trims_to_custom_max_history(self, monkeypatch):
+        import streamlit as st
+
+        from app.session import add_message, clear_history, init_session
+
+        class MockSessionState(dict):
+            def __getattr__(self, item):
+                return self[item]
+
+            def __setattr__(self, key, value):
+                self[key] = value
+
+        mock_state = MockSessionState()
+        monkeypatch.setattr(st, "session_state", mock_state)
+
+        init_session()
+        assert "session_id" in st.session_state
+        assert "rerank_top_k" in st.session_state
+
+        for i in range(10):
+            add_message("user", f"msg {i}", max_history=5)
+
+        assert len(st.session_state.messages) == 5
+        assert st.session_state.messages[-1]["content"] == "msg 9"
+        assert st.session_state.messages[0]["content"] == "msg 5"
+
+        clear_history()
+        assert st.session_state.messages == []
