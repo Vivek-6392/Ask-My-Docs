@@ -2,9 +2,11 @@ name: CI — Test & Evaluate
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, "fix/**", "feature/**"]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+
 
 env:
   PYTHON_VERSION: "3.11"
