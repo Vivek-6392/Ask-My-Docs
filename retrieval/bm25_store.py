@@ -73,7 +73,8 @@ class BM25Store:
         """
         before = len(self._corpus)
         self._corpus = [
-            c for c in self._corpus
+            c
+            for c in self._corpus
             if Path(str(c.get("metadata", {}).get("source", ""))).name != filename
         ]
         removed = before - len(self._corpus)
