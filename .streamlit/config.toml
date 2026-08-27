@@ -8,9 +8,11 @@ enableXsrfProtection = true
 gatherUsageStats = false
 
 [theme]
-base = "dark"
-primaryColor = "#4f8ef7"
-backgroundColor = "#0f1117"
-secondaryBackgroundColor = "#1a1d27"
-textColor = "#e2e8f0"
-font = "monospace"
+# Switched to light base to match your styles.css --bg-main
+base = "light"
+primaryColor = "#3b82f6"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f8fafc"
+textColor = "#0f172a"
+# Changed from monospace to sans serif to match your 'Inter' font import
+font = "sans serif"
