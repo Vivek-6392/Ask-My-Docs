@@ -1,0 +1,46 @@
+# Git & CI
+.git
+.gitignore
+.github
+
+# Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Byte-compiled / optimized files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+
+# Local Data & Persistent Stores
+chroma_db/
+uploaded_docs/
+*.sqlite3
+*.db
+*.log
+
+# Testing & Coverage
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+tests/
+evaluation/results.json
+
+# IDE & OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

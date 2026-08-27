@@ -1,11 +1,23 @@
 # 📚 Ask My Docs — Production RAG Application
 
 > **Domain-specific document Q&A** with hybrid retrieval (BM25 + vector search),
-> cross-encoder reranking, citation enforcement, and a CI-gated evaluation pipeline.
+> cross-encoder reranking, full LaTeX math rendering, inline citations, per-document index management, and a CI-gated RAGAS evaluation pipeline.
 
-[![CI](https://github.com/vivek-6392/ask-my-docs/actions/workflows/ci.yml/badge.svg)](https://github.com/vivek-6392/ask-my-docs/actions)
+[![CI](https://github.com/Vivek-6392/Ask-My-Docs/actions/workflows/ci.yml/badge.svg)](https://github.com/Vivek-6392/Ask-My-Docs/actions)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+---
+
+## 🚀 Key Features
+
+- ⚡ **Hybrid Retrieval Funnel**: Combines dense semantic search (ChromaDB + BAAI/bge-small) and sparse keyword search (BM25) fused with Reciprocal Rank Fusion (RRF).
+- 🎯 **Cross-Encoder Reranking**: Uses `ms-marco-MiniLM-L-6-v2` to jointly score and rerank candidate chunks for maximum precision.
+- 📐 **Full LaTeX MathJax Support**: Seamlessly renders complex mathematical formulas ($...$ inline and $$...$$ display equations) emitted by reasoning models.
+- 📂 **Auto-Index & Document Management**: Direct drag-and-drop file upload with automated chunking/indexing and one-click per-document deletion (`🗑`) in the sidebar.
+- 📌 **Inline Citations & Collapsible Sources**: Numbered citation tags linking to collapsible source snippets with match confidence scores.
+- 📊 **CI-Gated RAGAS Evaluation**: Automated quality gate testing Faithfulness, Answer Relevancy, Context Precision, and Context Recall on every push.
+- 🐳 **Containerized & Production Ready**: Multi-stage Docker build with automated build & push to GitHub Container Registry (`ghcr.io`).
 
 ---
 
@@ -14,7 +26,7 @@
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Streamlit UI                             │
-│          Chat Panel · Upload Panel · Retrieval Debug            │
+│       Sidebar (Upload, Docs, Delete, Settings) · Chat View      │
 └────────────────────────────┬────────────────────────────────────┘
                              │ query
                              ▼
@@ -28,8 +40,8 @@
 │         └────────┬──────────┘                                   │
 │                  ▼                                              │
 │      ┌─────────────────────┐                                    │
-│      │ Reciprocal Rank     │  (score fusion)                    │
-│      │ Fusion (RRF k=60)   │                                    │
+│      │ Reciprocal Rank     │  (score fusion, k=60)              │
+│      │ Fusion (RRF)        │                                    │
 │      └──────────┬──────────┘                                    │
 │                 ▼                                               │
 │      ┌─────────────────────┐                                    │
@@ -38,21 +50,21 @@
 │      └──────────┬──────────┘                                    │
 │                 ▼                                               │
 │      ┌──────────────────────────────────┐                       │
-│      │  Groq LLM                        │  (generation +        │
-│      │  (see AppConfig.llm_model)       │   citations)          │
-│      │  + Citation Prompt               │                       │
+│      │  Groq LLM (openai/gpt-oss-120b)  │  (answer generation   │
+│      │  + Citation & LaTeX Prompts      │   + citations)        │
 │      └──────────────────────────────────┘                       │
 └─────────────────────────────────────────────────────────────────┘
                              │
           ┌──────────────────┴───────────────────┐
           ▼                                       ▼
-┌──────────────────┐                  ┌───────────────────────┐
-│  CI Pipeline     │                  │  RAGAS Evaluation     │
-│  GitHub Actions  │                  │  Faithfulness         │
-│  Lint → Test →   │                  │  Answer Relevancy     │
-│  Eval → Deploy   │                  │  Context Precision    │
-└──────────────────┘                  │  Context Recall       │
-                                      └───────────────────────┘
+┌──────────────────────────────────┐   ┌─────────────────────────┐
+│        CI/CD Pipeline            │   │    RAGAS Evaluation     │
+│  GitHub Actions:                 │   │  Judge: compound-mini   │
+│  Lint → Unit Tests → RAGAS Gate  │   │  • Faithfulness         │
+│  → GHCR Docker Image Push        │   │  • Answer Relevancy     │
+│                                  │   │  • Context Precision    │
+│                                  │   │  • Context Recall       │
+└──────────────────────────────────┘   └─────────────────────────┘
 ```
 
 ---
@@ -63,51 +75,51 @@
 ask-my-docs/
 ├── app/                        # Streamlit application
 │   ├── __init__.py
-│   ├── main.py                 # Entry point
-│   ├── config.py               # AppConfig dataclass + env loading
-│   ├── session.py              # Streamlit session state helpers
-│   ├── ui.py                   # UI components (sidebar, chat, upload)
-│   └── styles.css              # Custom dark theme CSS
+│   ├── main.py                 # Streamlit entry point
+│   ├── config.py               # Centralised AppConfig dataclass + env loading
+│   ├── session.py              # Streamlit session state management
+│   ├── ui.py                   # UI components (sidebar, chat, sources, citations)
+│   └── styles.css              # Custom SaaS theme CSS
 │
-├── retrieval/                  # RAG core
+├── retrieval/                  # RAG core engine
 │   ├── __init__.py
-│   ├── pipeline.py             # RAGPipeline: orchestrator
-│   ├── vector_store.py         # ChromaDB dense retrieval
-│   ├── bm25_store.py           # BM25 sparse retrieval (rank-bm25)
+│   ├── pipeline.py             # RAGPipeline orchestrator
+│   ├── vector_store.py         # ChromaDB dense retrieval & document deletion
+│   ├── bm25_store.py           # BM25 sparse keyword retrieval & persistence
 │   ├── reranker.py             # Cross-encoder reranking
-│   ├── fusion.py               # Reciprocal Rank Fusion
-│   ├── prompt.py               # Prompt templates + citation builder
-│   └── ingestor.py             # Load → chunk → embed → index
+│   ├── fusion.py               # Reciprocal Rank Fusion (RRF)
+│   ├── prompt.py               # Prompts & citation context formatting
+│   └── ingestor.py             # Document parser → chunker → embedder
 │
 ├── evaluation/                 # RAGAS evaluation pipeline
 │   ├── __init__.py
-│   ├── evaluator.py            # CLI evaluator with threshold gates
-│   └── eval_dataset.json       # Q&A pairs for evaluation
+│   ├── evaluator.py            # CLI evaluator with threshold quality gates
+│   ├── eval_dataset.json       # Ground truth evaluation Q&A dataset
+│   └── results.json            # Generated evaluation metrics output
 │
-├── tests/                      # Test suite
+├── tests/                      # Pytest test suite
 │   ├── __init__.py
 │   ├── conftest.py
-│   ├── test_retrieval.py       # Unit tests (RRF, BM25, prompts)
-│   └── test_pipeline.py        # Integration tests (mocked LLM)
+│   ├── test_retrieval.py       # Unit tests (RRF, BM25, prompt builder)
+│   ├── test_pipeline.py        # Integration tests (mocked LLM)
+│   └── test_evaluator.py       # Evaluator threshold & logic tests
 │
 ├── scripts/
-│   ├── ingest.py               # CLI batch document ingestor
-│   └── seed_eval_docs.py       # Seeds index for CI evaluation
+│   ├── ingest.py               # CLI document ingestion tool
+│   └── seed_eval_docs.py       # Seeds corpus for CI automated testing
 │
 ├── .github/
 │   └── workflows/
-│       └── ci.yml              # Lint → Test → Eval → Docker CI
+│       └── ci.yml              # Lint → Test → RAGAS Eval → GHCR Publish
 │
 ├── .streamlit/
-│   └── config.toml             # Streamlit server + theme config
+│   └── config.toml             # Streamlit server & theme configuration
 │
-├── .env.example                # Environment variable template
-├── .gitignore
-├── Dockerfile                  # Multi-stage production build
-├── docker-compose.yml          # Local dev with volumes
-├── requirements.txt            # Pinned Python dependencies
-├── pytest.ini                  # Pytest configuration
-└── pyproject.toml              # Ruff + mypy configuration
+├── Dockerfile                  # Multi-stage production container build
+├── docker-compose.yml          # Local Docker setup with persistent volumes
+├── requirements.txt            # Production Python dependencies
+├── requirements-dev.txt        # Development & linting dependencies
+└── pyproject.toml              # Ruff configuration
 ```
 
 ---
@@ -117,29 +129,41 @@ ask-my-docs/
 ### Prerequisites
 
 - Python 3.11+
-- An OpenAI API key
+- A free Groq API key from [console.groq.com](https://console.groq.com)
 
-### Step 1 — Clone & set up environment
+### 1. Clone & Set Up Environment
 
 ```bash
-git clone https://github.com/your-org/ask-my-docs.git
-cd ask-my-docs
+git clone https://github.com/Vivek-6392/Ask-My-Docs.git
+cd Ask-My-Docs
 
 python -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
+# On Windows:
+.venv\Scripts\activate
+# On macOS/Linux:
+source .venv/bin/activate
+
 pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-### Step 2 — Configure environment
+### 2. Configure Environment
+
+Create a `.env` file in the root directory:
 
 ```bash
 cp .env.example .env
-# Edit .env and set GROQ_API_KEY=gsk_your_key_here
-# Get a free key at: https://console.groq.com
 ```
 
-### Step 3 — Run the app
+Set your `GROQ_API_KEY`:
+
+```dotenv
+GROQ_API_KEY=gsk_your_groq_api_key_here
+LLM_MODEL=openai/gpt-oss-120b
+RAGAS_LLM_MODEL=groq/compound-mini
+```
+
+### 3. Launch the Application
 
 ```bash
 streamlit run app/main.py
@@ -147,244 +171,111 @@ streamlit run app/main.py
 
 Open [http://localhost:8501](http://localhost:8501) in your browser.
 
-### Step 4 — Upload documents
+### 4. Upload & Query
 
-Use the **Upload Documents** tab to drop in PDFs, TXT, DOCX, or Markdown files.
-Click **Index Documents**. Then switch to the **Chat** tab to query them.
-
-### Step 5 — (Optional) Batch ingest from CLI
-
-```bash
-python scripts/ingest.py --dir ./my_documents
-python scripts/ingest.py --file report.pdf
-python scripts/ingest.py --dir ./docs --clear   # clears existing index first
-```
+1. Click **📂 Upload Documents** in the sidebar to drop PDF, DOCX, TXT, or Markdown files.
+2. Files are **automatically indexed** immediately upon selection.
+3. Start asking questions in the chat bar. Expand the **🗎 Sources** dropdown to view source snippets.
 
 ---
 
 ## Running Tests
 
 ```bash
-# All tests
+# Run unit & integration test suite
 pytest tests/ -v
 
-# Unit tests only (no API key needed)
-pytest tests/ -v -m "not integration"
-
-# With coverage report
-pytest tests/ --cov=retrieval --cov=app --cov-report=term-missing
+# Run with coverage report
+pytest tests/ --cov=retrieval --cov=app -v
 ```
 
 ---
 
 ## Running the Evaluation Pipeline
 
-The RAGAS evaluation measures 4 metrics against your indexed documents:
+The evaluation pipeline uses **RAGAS** to evaluate the RAG system against ground truth questions and answers:
 
-| Metric | Threshold | Description |
-|--------|-----------|-------------|
-| Faithfulness | ≥ 0.80 | Answer grounded in retrieved context |
-| Answer Relevancy | ≥ 0.75 | Answer addresses the question |
-| Context Precision | ≥ 0.70 | Retrieved chunks are relevant |
-| Context Recall | ≥ 0.70 | All needed info was retrieved |
+| Metric | Threshold | Purpose |
+|---|---|---|
+| **Faithfulness** | ≥ 0.85 | Verifies answers are grounded strictly in retrieved context |
+| **Answer Relevancy** | ≥ 0.80 | Ensures the generated response answers the user's prompt |
+| **Context Precision** | ≥ 0.75 | Validates high ranking of ground-truth relevant passages |
+| **Context Recall** | ≥ 0.70 | Measures if all necessary context was retrieved |
 
 ```bash
-# First seed your index with test documents
+# 1. Seed sample documents into index
 python scripts/seed_eval_docs.py
 
-# Then run evaluation (requires OPENAI_API_KEY)
+# 2. Run evaluation
 python -m evaluation.evaluator \
   --dataset evaluation/eval_dataset.json \
   --output evaluation/results.json
 ```
 
-Exit code is `0` if all thresholds pass, `1` if any fail — used by CI to gate merges.
-
-### Adding your own eval questions
-
-Edit `evaluation/eval_dataset.json`:
-
-```json
-[
-  {
-    "question": "What is the cancellation policy?",
-    "ground_truth": "Subscriptions can be cancelled any time; access continues until period end."
-  }
-]
-```
-
 ---
 
-## Deploy on Streamlit Community Cloud (Free)
+## Docker Deployment
 
-1. Push your code to a **public** GitHub repo.
-2. Go to [share.streamlit.io](https://share.streamlit.io) → **New app**.
-3. Select your repo, branch `main`, and set **Main file path** to `app/main.py`.
-4. Under **Advanced settings → Secrets**, paste:
-   ```toml
-   GROQ_API_KEY = "gsk_your_key_here"
-   ```
-5. Click **Deploy**. Done — your app is live at `https://your-app.streamlit.app`.
-
-> **Note:** ChromaDB persists in-memory on Streamlit Cloud (no disk persistence).
-> For production persistence, use the Docker deployment below.
-
----
-
-## Deploy with Docker (Self-hosted)
-
-### Option A — Docker Compose (recommended)
+### Using Docker Compose (Recommended)
 
 ```bash
-# 1. Clone repo and set env
-git clone https://github.com/your-org/ask-my-docs.git
-cd ask-my-docs
-cp .env.example .env
-# Edit .env with your OPENAI_API_KEY
+# 1. Start application with persistent storage
+docker compose up -d
 
-# 2. Build and start
-docker-compose up -d
-
-# 3. View logs
-docker-compose logs -f app
-
-# 4. Open in browser
-open http://localhost:8501
+# 2. View container logs
+docker compose logs -f app
 ```
 
-Data is persisted in Docker volumes `chroma_data` and `uploaded_docs`.
-
-### Option B — Docker standalone
+### Using Standalone Docker
 
 ```bash
-docker build -t ask-my-docs .
+# Build image
+docker build -t ask-my-docs:latest .
 
+# Run container
 docker run -d \
   --name ask-my-docs \
   -p 8501:8501 \
   -e GROQ_API_KEY=gsk_your_key_here \
   -v $(pwd)/chroma_db:/app/chroma_db \
   -v $(pwd)/uploaded_docs:/app/uploaded_docs \
-  ask-my-docs
-```
-
----
-
-## Deploy on AWS / GCP / Azure
-
-### AWS ECS (Fargate)
-
-```bash
-# 1. Push image to ECR
-aws ecr create-repository --repository-name ask-my-docs
-aws ecr get-login-password | docker login --username AWS --password-stdin <ECR_URI>
-docker tag ask-my-docs:latest <ECR_URI>/ask-my-docs:latest
-docker push <ECR_URI>/ask-my-docs:latest
-
-# 2. Create ECS task definition pointing to the image
-# 3. Set OPENAI_API_KEY as an ECS secret (AWS Secrets Manager)
-# 4. Create a Fargate service with ALB on port 8501
-```
-
-### Google Cloud Run
-
-```bash
-gcloud builds submit --tag gcr.io/YOUR_PROJECT/ask-my-docs
-gcloud run deploy ask-my-docs \
-  --image gcr.io/YOUR_PROJECT/ask-my-docs \
-  --port 8501 \
-  --set-env-vars OPENAI_API_KEY=sk-... \
-  --allow-unauthenticated
+  ask-my-docs:latest
 ```
 
 ---
 
 ## CI/CD Pipeline
 
-The GitHub Actions workflow (`.github/workflows/ci.yml`) runs on every push/PR:
+The GitHub Actions workflow ([.github/workflows/ci.yml](file:///.github/workflows/ci.yml)) runs on every push and PR:
 
-```
-Push → Lint (ruff) → Unit Tests (pytest + coverage) → Docker Build
-                                    │
-                           main branch only
-                                    ▼
-                        RAGAS Evaluation Gate
-                    (fails if metrics < thresholds)
-                                    │
-                              PR Comment with
-                              score table
-```
-
-### Setting CI secrets
-
-In your GitHub repo → **Settings → Secrets and variables → Actions**:
-
-| Secret | Value |
-|--------|-------|
-| `GROQ_API_KEY` | Your Groq API key (free at console.groq.com) |
+1. **Lint**: Code style and formatting checks with `ruff`.
+2. **Unit Tests**: Full test suite execution with `pytest`.
+3. **RAG Quality Gate**: Automatically runs `seed_eval_docs.py` and `evaluator.py`, verifying RAGAS metric thresholds and uploading `results.json` artifacts.
+4. **Build & Publish**: Builds multi-platform Docker container and publishes to GitHub Container Registry (`ghcr.io`) on `main` branch merges.
 
 ---
 
 ## Configuration Reference
 
-All settings live in `.env` (see `.env.example`):
+All settings can be configured via `.env` or system environment variables:
 
 | Variable | Default | Description |
-|----------|---------|-------------|
-| `GROQ_API_KEY` | — | **Required.** Get free key at [console.groq.com](https://console.groq.com) |
-| `LLM_MODEL` | `qwen/qwen3.6-27b` | Groq model name |
-| `EMBEDDING_MODEL` | `BAAI/bge-small-en-v1.5` | HuggingFace model (downloaded locally, no API key) |
-| `RERANKER_MODEL` | `cross-encoder/ms-marco-MiniLM-L-6-v2` | HuggingFace cross-encoder |
-| `CHUNK_SIZE` | `512` | Token chunk size |
-| `CHUNK_OVERLAP` | `64` | Chunk overlap tokens |
-| `VECTOR_TOP_K` | `20` | Dense retrieval candidates |
-| `BM25_TOP_K` | `20` | Sparse retrieval candidates |
-| `RERANK_TOP_K` | `5` | Final chunks after reranking |
-| `CHROMA_PERSIST_DIR` | `./chroma_db` | ChromaDB storage path |
-
-### Available Groq Free Models
-
-| Model | Speed | Context | Best for |
-|-------|-------|---------|----------|
-| `openai/gpt-oss-120b` | ~500 t/s | 131k | Best overall quality & reasoning |
-| `openai/gpt-oss-20b` | ~1000 t/s | 131k | Fast tool calling & low latency |
-| `groq/compound` | ~450 t/s | 131k | Agentic search, web research & tool use |
-| `groq/compound-mini` | ~450 t/s | 131k | Faster/lighter agentic workloads |
----
-
-## How the Hybrid Retrieval Works
-
-```
-Query: "What is the refund policy for digital products?"
-
-1. VECTOR SEARCH (top-20)          2. BM25 SEARCH (top-20)
-   Dense semantic similarity           Exact keyword matching
-   ┌────────────────────────┐         ┌────────────────────────┐
-   │ refund_policy.pdf p3   │ 0.91    │ refund_policy.pdf p3   │ 8.2
-   │ terms_of_service.pdf   │ 0.87    │ faq.pdf p12            │ 6.1
-   │ faq.pdf p12            │ 0.82    │ pricing.pdf p5         │ 3.4
-   │ ...                    │         │ ...                    │
-   └────────────────────────┘         └────────────────────────┘
-                    │                           │
-                    └──────────┬────────────────┘
-                               ▼
-                   3. RECIPROCAL RANK FUSION
-                      score = Σ 1/(60 + rank)
-                      Deduplicates & merges lists
-                               │
-                               ▼
-                   4. CROSS-ENCODER RERANKING (top-5)
-                      Joint query+passage scoring
-                      Much more accurate than bi-encoder
-                               │
-                               ▼
-                   5. GROQ GENERATION
-                      with numbered citation markers
-                      enforced by system prompt
-```
+|---|---|---|
+| `GROQ_API_KEY` | `""` | **Required.** Groq API authentication key |
+| `LLM_MODEL` | `openai/gpt-oss-120b` | LLM used for RAG generation & chat responses |
+| `RAGAS_LLM_MODEL` | `groq/compound-mini` | LLM used for RAGAS evaluation in CI (70K TPM) |
+| `EMBEDDING_MODEL` | `BAAI/bge-small-en-v1.5` | HuggingFace embedding model (downloaded locally) |
+| `RERANKER_MODEL` | `cross-encoder/ms-marco-MiniLM-L-6-v2` | Cross-encoder reranker model |
+| `VECTOR_TOP_K` | `40` | Dense vector candidates from ChromaDB |
+| `BM25_TOP_K` | `25` | Sparse keyword candidates from BM25 |
+| `RERANK_TOP_K` | `10` | Final top chunks passed into LLM prompt context |
+| `CHUNK_SIZE` | `512` | Token chunk size for document splitting |
+| `CHUNK_OVERLAP` | `64` | Overlap size between adjacent chunks |
+| `CHROMA_PERSIST_DIR` | `./chroma_db` | Storage path for ChromaDB vector embeddings |
+| `UPLOAD_DIR` | `./uploaded_docs` | Storage directory for user uploaded documents |
 
 ---
 
 ## License
 
-MIT © 2026
+Distributed under the MIT License. See [LICENSE](LICENSE) for more details.
