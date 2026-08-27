@@ -66,6 +66,23 @@ class BM25Store:
         self._save()
         logger.info("BM25Store: index rebuilt with %d docs", len(self._corpus))
 
+    def delete_by_source(self, filename: str) -> int:
+        """Remove all corpus entries whose source matches *filename*.
+
+        Returns the number of entries removed.
+        """
+        before = len(self._corpus)
+        self._corpus = [
+            c for c in self._corpus
+            if Path(str(c.get("metadata", {}).get("source", ""))).name != filename
+        ]
+        removed = before - len(self._corpus)
+        if removed:
+            self._rebuild_index()
+            self._save()
+            logger.info("BM25Store: removed %d docs for '%s'", removed, filename)
+        return removed
+
     # ── Search ────────────────────────────────────────────────────────────────
 
     def search(self, query: str, k: int = 20) -> list[dict]:

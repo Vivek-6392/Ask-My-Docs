@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 import uuid
+from pathlib import Path
 
 import chromadb
 from chromadb.config import Settings
@@ -51,6 +52,18 @@ class VectorStore:
 
     def count(self) -> int:
         return self._collection.count()
+
+    def get_indexed_files(self) -> list[dict]:
+        """Returns list of distinct files with chunk count."""
+        if self._collection.count() == 0:
+            return []
+        data = self._collection.get(include=["metadatas"])
+        counts: dict[str, int] = {}
+        for m in data.get("metadatas", []):
+            if m and "source" in m:
+                clean_name = Path(str(m["source"])).name
+                counts[clean_name] = counts.get(clean_name, 0) + 1
+        return [{"name": name, "chunks": count} for name, count in sorted(counts.items())]
 
     def add_chunks(self, chunks: list[dict]) -> None:
         """
@@ -101,6 +114,22 @@ class VectorStore:
                 }
             )
         return hits
+
+    def delete_by_source(self, filename: str) -> int:
+        """Delete all chunks whose source metadata ends with *filename*.
+
+        Returns the number of chunks removed.
+        """
+        data = self._collection.get(include=["metadatas"])
+        ids_to_delete = [
+            doc_id
+            for doc_id, meta in zip(data["ids"], data.get("metadatas", []))
+            if meta and Path(str(meta.get("source", ""))).name == filename
+        ]
+        if ids_to_delete:
+            self._collection.delete(ids=ids_to_delete)
+            logger.info("VectorStore: deleted %d chunks for '%s'", len(ids_to_delete), filename)
+        return len(ids_to_delete)
 
     def delete_collection(self) -> None:
         self._client.delete_collection(self.collection_name)

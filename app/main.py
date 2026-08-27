@@ -3,8 +3,11 @@ Ask My Docs — Production RAG Application
 Main Streamlit entry point
 """
 
+from __future__ import annotations
+
 import os
 import sys
+from pathlib import Path
 
 import streamlit as st
 
@@ -12,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.config import AppConfig
 from app.session import init_session
-from app.ui import render_chat, render_sidebar, render_upload_panel
+from app.ui import render_chat, render_sidebar
 from retrieval.pipeline import RAGPipeline
 
 st.set_page_config(
@@ -23,8 +26,10 @@ st.set_page_config(
 )
 
 # Load custom CSS
-with open(os.path.join(os.path.dirname(__file__), "styles.css")) as f:
-    st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+css_file = Path(__file__).parent / "styles.css"
+if css_file.exists():
+    with open(css_file, "r", encoding="utf-8") as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 
 @st.cache_resource(show_spinner=False)
@@ -42,18 +47,12 @@ def main():
 
     pipeline = get_pipeline(config, st.session_state.session_id)
 
-    # Layout
-    col_sidebar, col_main = st.columns([1, 3])
-
-    with col_sidebar:
+    # Sidebar
+    with st.sidebar:
         render_sidebar(pipeline, config)
 
-    with col_main:
-        tab_chat, tab_upload = st.tabs(["💬 Chat", "📂 Upload Documents"])
-        with tab_chat:
-            render_chat(pipeline, config)
-        with tab_upload:
-            render_upload_panel(pipeline, config)
+    # Main area — chat only
+    render_chat(pipeline, config)
 
 
 if __name__ == "__main__":
