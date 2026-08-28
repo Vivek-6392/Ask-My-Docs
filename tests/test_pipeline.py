@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 
 def _make_config():
     from app.config import AppConfig
+
     return AppConfig(
         groq_api_key="gsk-test",
         llm_model="qwen/qwen3.6-27b",
@@ -116,3 +117,43 @@ class TestRAGPipeline:
         result = RAGPipeline(_make_config()).query("What is the answer?")
 
         assert result["answer"] == ""
+
+    def test_pipeline_per_session_stores_initialization(
+        self, mock_reranker_cls, mock_bm25_cls, mock_vector_cls, mock_llm_cls
+    ):
+        from retrieval.pipeline import RAGPipeline
+
+        config = _make_config()
+        pipeline = RAGPipeline(config, session_id="session_abc_123")
+
+        assert pipeline.session_id == "session_abc_123"
+        mock_vector_cls.assert_called_with(config, session_id="session_abc_123")
+        mock_bm25_cls.assert_called_with(config, session_id="session_abc_123")
+
+    @patch("retrieval.ingestor._load_file")
+    def test_ingest_files_batches_add_documents(
+        self, mock_load_file, mock_reranker_cls, mock_bm25_cls, mock_vector_cls, mock_llm_cls
+    ):
+        from pathlib import Path
+
+        from langchain_core.documents import Document
+
+        from retrieval.ingestor import ingest_files
+
+        mock_load_file.side_effect = [
+            [Document(page_content="File 1 text", metadata={"source": "file1.txt"})],
+            [Document(page_content="File 2 text", metadata={"source": "file2.txt"})],
+        ]
+
+        mock_pipeline = MagicMock()
+        config = _make_config()
+
+        result = ingest_files([Path("file1.txt"), Path("file2.txt")], mock_pipeline, config)
+
+        assert result["files"] == 2
+        assert result["chunks"] == 2
+        assert mock_pipeline.add_documents.call_count == 1
+        chunks_passed = mock_pipeline.add_documents.call_args[0][0]
+        assert len(chunks_passed) == 2
+        assert chunks_passed[0]["text"] == "File 1 text"
+        assert chunks_passed[1]["text"] == "File 2 text"

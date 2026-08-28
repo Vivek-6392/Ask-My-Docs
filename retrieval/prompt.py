@@ -36,12 +36,14 @@ def build_rag_prompt(chunks: list[dict]) -> tuple[str, list[dict]]:
 
         lines.append(f"[{i}] Source: {source} | Page: {page}\n{text}\n")
 
-        citations.append({
-            "index": i,
-            "source": source,
-            "page": page,
-            "score": score,
-            "snippet": text[:300],
-        })
+        citations.append(
+            {
+                "index": i,
+                "source": source,
+                "page": page,
+                "score": score,
+                "snippet": text[:300],
+            }
+        )
 
     return "\n".join(lines), citations

@@ -28,21 +28,28 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
+# Create non-root user
+RUN useradd -m -u 1000 appuser
+
 # Copy installed packages from builder
 COPY --from=builder /install /usr/local
 
 # Copy source
 COPY . .
 
-# Streamlit config
-RUN mkdir -p /root/.streamlit
-COPY .streamlit/config.toml /root/.streamlit/config.toml
+# Directories, Streamlit config, and ownership
+RUN mkdir -p /home/appuser/.streamlit /app/chroma_db /app/uploaded_docs && \
+    cp .streamlit/config.toml /home/appuser/.streamlit/config.toml && \
+    chown -R appuser:appuser /app /home/appuser
 
 # Volumes for persistence
 VOLUME ["/app/chroma_db", "/app/uploaded_docs"]
 
 # Port
 EXPOSE 8501
+
+# Run as non-root user
+USER appuser
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
@@ -53,3 +60,4 @@ CMD ["streamlit", "run", "app/main.py", \
      "--server.port=8501", \
      "--server.address=0.0.0.0", \
      "--server.headless=true"]
+

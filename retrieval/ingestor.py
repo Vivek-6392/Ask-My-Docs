@@ -4,15 +4,16 @@ Supports PDF, TXT, DOCX, Markdown.
 """
 
 from __future__ import annotations
-import time
+
 import logging
+import time
 from pathlib import Path
 
 from langchain_community.document_loaders import (
     PyPDFLoader,
     TextLoader,
-    UnstructuredWordDocumentLoader,
     UnstructuredMarkdownLoader,
+    UnstructuredWordDocumentLoader,
 )
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
@@ -47,13 +48,15 @@ def _split(docs: list, chunk_size: int, chunk_overlap: int) -> list[dict]:
         meta = doc.metadata
         for split in splits:
             if split.strip():
-                chunks.append({
-                    "text": split.strip(),
-                    "metadata": {
-                        "source": meta.get("source", str(meta.get("file_path", "unknown"))),
-                        "page": meta.get("page", meta.get("page_number", "?")),
-                    },
-                })
+                chunks.append(
+                    {
+                        "text": split.strip(),
+                        "metadata": {
+                            "source": meta.get("source", str(meta.get("file_path", "unknown"))),
+                            "page": meta.get("page", meta.get("page_number", "?")),
+                        },
+                    }
+                )
     return chunks
 
 
@@ -63,20 +66,22 @@ def ingest_files(paths: list[Path], pipeline, config) -> dict:
     Returns {files, chunks, elapsed_s}.
     """
     t0 = time.perf_counter()
-    total_chunks = 0
+    all_chunks: list[dict] = []
 
     for path in paths:
         try:
             docs = _load_file(path)
             chunks = _split(docs, config.chunk_size, config.chunk_overlap)
-            pipeline.add_documents(chunks)
-            total_chunks += len(chunks)
+            all_chunks.extend(chunks)
             logger.info("Ingested %s → %d chunks", path.name, len(chunks))
         except Exception as exc:
             logger.error("Failed to ingest %s: %s", path.name, exc)
 
+    if all_chunks:
+        pipeline.add_documents(all_chunks)
+
     return {
         "files": len(paths),
-        "chunks": total_chunks,
+        "chunks": len(all_chunks),
         "elapsed_s": time.perf_counter() - t0,
     }

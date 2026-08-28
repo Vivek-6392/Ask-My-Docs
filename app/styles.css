@@ -1,115 +1,272 @@
-/* Ask My Docs — Custom Streamlit Styles */
+/* Ask My Docs — Premium Light SaaS Theme */
 
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
-    --bg: #0f1117;
-    --surface: #1a1d27;
-    --border: #2a2d3a;
-    --accent: #4f8ef7;
-    --accent2: #a78bfa;
-    --text: #e2e8f0;
-    --muted: #64748b;
-    --success: #10b981;
-    --warning: #f59e0b;
+    --bg-main: #ffffff;
+    --sidebar-bg: #f8fafc; /* Subtle off-white to contrast with cards */
+    --card-bg: #ffffff;
+    --card-border: #e2e8f0;
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --accent-primary: #4f46e5; /* Rich Indigo */
+    --accent-primary-light: #e0e7ff;
+    --accent-primary-hover: #4338ca;
+    --border-light: #e2e8f0;
+    --user-bubble-bg: #bae6fd; /* Light sky blue */
+    
+    /* Modern Shadow Elevations */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.04);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.04);
 }
 
-html, body, [data-testid="stAppViewContainer"] {
-    font-family: 'IBM Plex Sans', sans-serif !important;
-    background: var(--bg) !important;
-    color: var(--text) !important;
+html, body, [data-testid="stAppViewContainer"], .main {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    background-color: var(--bg-main) !important;
+    color: var(--text-main) !important;
 }
 
-/* Sidebar */
+/* Hide default streamlit decorations */
+header[data-testid="stHeader"] { background: transparent !important; }
+#MainMenu, footer { visibility: hidden; }
+
+/* ── Sidebar ────────────────────────────────────────────────────────────── */
 [data-testid="stSidebar"] {
-    background: var(--surface) !important;
-    border-right: 1px solid var(--border) !important;
+    background-color: var(--sidebar-bg) !important;
+    border-right: 1px solid var(--border-light) !important;
+    padding: 1.5rem 1rem !important;
 }
 
-/* Chat messages */
-[data-testid="stChatMessage"] {
-    border-radius: 8px !important;
-    margin-bottom: 8px !important;
-    border: 1px solid var(--border) !important;
+[data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
+    gap: 1rem !important;
 }
 
-/* Input */
-[data-testid="stChatInputTextArea"] {
-    font-family: 'IBM Plex Sans', sans-serif !important;
-    background: var(--surface) !important;
-    border: 1px solid var(--accent) !important;
-    color: var(--text) !important;
+/* Premium Logo & Brand Header */
+.brand-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 0.5rem;
 }
 
-/* Buttons */
-.stButton > button {
-    background: linear-gradient(135deg, var(--accent), var(--accent2)) !important;
-    color: white !important;
+.brand-icon {
+    width: 34px;
+    height: 34px;
+    background: linear-gradient(135deg, #6366f1, #4f46e5); /* Gradient Pop */
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    font-size: 18px;
+    box-shadow: var(--shadow-sm);
+}
+
+.brand-title {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--text-main);
+    letter-spacing: -0.03em;
+}
+
+.brand-badges {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 1.5rem;
+}
+
+.dark-pill-badge {
+    background: var(--accent-primary-light);
+    color: var(--accent-primary-hover);
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 9999px;
+    border: 1px solid rgba(79, 70, 229, 0.2);
+}
+
+/* Floating Stats Cards */
+.stats-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 1.5rem;
+}
+
+.stat-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.stat-card-label {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 6px;
+}
+
+.stat-card-value {
+    color: var(--text-main);
+    font-size: 1.6rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+/* Section Titles */
+.sidebar-section-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+/* ── Interactive Starter Buttons ────────────────────────────────────────── */
+button[kind="secondary"] {
+    background-color: #ffffff !important;
+    color: var(--text-main) !important;
+    border: 1px solid var(--border-light) !important;
+    border-radius: 12px !important;
+    font-weight: 500 !important;
+    padding: 0.5rem 1rem !important;
+    box-shadow: var(--shadow-sm) !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Lift effect on hover */
+button[kind="secondary"]:hover {
+    border-color: var(--accent-primary) !important;
+    box-shadow: var(--shadow-md) !important;
+    color: var(--accent-primary) !important;
+    transform: translateY(-2px) !important; 
+}
+
+/* ── Top Navigation Tabs ────────────────────────────────────────────────── */
+[data-testid="stTabs"] {
+    border-bottom: 1px solid var(--border-light) !important;
+    margin-bottom: 2rem !important;
+}
+
+[data-testid="stTabs"] [data-baseweb="tab-list"] {
+    gap: 2.5rem !important;
+}
+
+[data-testid="stTabs"] [data-baseweb="tab"] {
+    font-size: 0.95rem !important;
+    font-weight: 500 !important;
+    color: var(--text-muted) !important;
+    padding: 0.85rem 0 !important;
     border: none !important;
-    border-radius: 6px !important;
-    font-family: 'IBM Plex Mono', monospace !important;
-    font-size: 0.85rem !important;
+}
+
+[data-testid="stTabs"] [aria-selected="true"] {
+    color: var(--accent-primary) !important;
     font-weight: 600 !important;
-    letter-spacing: 0.02em !important;
-    transition: opacity 0.2s !important;
+    border-bottom: 3px solid var(--accent-primary) !important;
 }
 
-.stButton > button:hover {
-    opacity: 0.85 !important;
+/* ── Chat Messages ──────────────────────────────────────────────────────── */
+.user-msg-container {
+    display: flex;
+    justify-content: flex-end;
+    margin: 1.5rem 0;
 }
 
-/* Expanders (citations) */
-[data-testid="stExpander"] {
-    border: 1px solid var(--border) !important;
-    border-radius: 6px !important;
-    background: var(--surface) !important;
+.user-msg-bubble {
+    background-color: var(--user-bubble-bg);
+    color: var(--text-main);
+    padding: 14px 22px;
+    border-radius: 20px 20px 4px 20px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    max-width: 80%;
+    line-height: 1.5;
+    border: 1px solid var(--card-border);
+    box-shadow: var(--shadow-sm);
 }
 
-/* Metrics */
-[data-testid="stMetric"] {
-    background: var(--surface) !important;
-    border: 1px solid var(--border) !important;
-    border-radius: 8px !important;
-    padding: 12px !important;
+.assistant-msg-container {
+    margin: 1.5rem 0;
+    font-size: 0.95rem;
+    line-height: 1.7;
+    color: #334155;
 }
 
-/* Code blocks */
-code, pre {
-    font-family: 'IBM Plex Mono', monospace !important;
-    font-size: 0.82rem !important;
+/* ── Floating Chat Input Bar ────────────────────────────────────────────── */
+[data-testid="stChatInput"] {
+    position: fixed;
+    bottom: 2rem;
+    left: calc(18rem + (100vw - 18rem - 800px) / 2);
+    width: min(800px, calc(100vw - 22rem));
+    z-index: 1000;
 }
 
-/* Tabs */
-[data-testid="stTabs"] button {
-    font-family: 'IBM Plex Mono', monospace !important;
+@media (max-width: 992px) {
+    [data-testid="stChatInput"] {
+        left: 2rem;
+        width: calc(100vw - 4rem);
+    }
+}
+
+[data-testid="stChatInputTextArea"] {
+    background-color: #ffffff !important;
+    border: 1px solid var(--border-light) !important;
+    border-radius: 24px !important; /* Premium Pill Shape */
+    color: var(--text-main) !important;
+    font-size: 1rem !important;
+    padding: 16px 24px !important;
+    box-shadow: var(--shadow-lg) !important; /* Strong float effect */
+    transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+[data-testid="stChatInputTextArea"]:focus {
+    border-color: var(--accent-primary) !important;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15), var(--shadow-lg) !important;
+}
+
+[data-testid="stChatInputTextArea"]::placeholder {
+    color: #94a3b8 !important;
+}
+
+[data-testid="stChatInputSubmitButton"] {
+    color: var(--accent-primary) !important;
+    background: var(--accent-primary-light) !important;
+    border-radius: 50% !important;
+    padding: 6px !important;
+    margin-right: 8px !important;
+    align-self: center !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* ── Clear Chat Button (Sidebar) ────────────────────────────────────────── */
+.clear-chat-btn {
+    background: transparent !important;
+    color: #94a3b8 !important;
+    border: none !important;
     font-size: 0.85rem !important;
+    font-weight: 500 !important;
+    padding: 8px 0 !important;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: color 0.2s ease;
 }
 
-/* File uploader */
-[data-testid="stFileUploader"] {
-    border: 2px dashed var(--border) !important;
-    border-radius: 8px !important;
-    background: var(--surface) !important;
-}
-
-/* Divider */
-hr {
-    border-color: var(--border) !important;
-}
-
-/* Sliders */
-[data-testid="stSlider"] [role="slider"] {
-    background: var(--accent) !important;
-}
-
-/* Info boxes */
-[data-testid="stAlert"] {
-    border-radius: 6px !important;
-    border-left: 4px solid var(--accent) !important;
-}
-
-/* Toggle */
-[data-testid="stCheckbox"] span {
-    font-family: 'IBM Plex Mono', monospace !important;
-    font-size: 0.85rem !important;
+.clear-chat-btn:hover {
+    color: #ef4444 !important; /* Red hover for destructive action */
 }

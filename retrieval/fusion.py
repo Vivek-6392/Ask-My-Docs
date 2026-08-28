@@ -4,6 +4,7 @@ Each document's RRF score = sum(1 / (k + rank_i)) across all lists.
 """
 
 from __future__ import annotations
+
 from collections import defaultdict
 
 
@@ -27,7 +28,7 @@ def reciprocal_rank_fusion(
 
     for results in ranked_lists:
         for rank, doc in enumerate(results, start=1):
-            key = doc["text"][:120]   # dedup key (first 120 chars)
+            key = doc["text"][:120]  # dedup key (first 120 chars)
             rrf_scores[key] += 1.0 / (k + rank)
             if key not in doc_map:
                 doc_map[key] = doc
